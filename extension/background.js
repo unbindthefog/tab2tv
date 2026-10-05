@@ -110,6 +110,27 @@ async function logDisplays(event) {
   await chrome.storage.local.set({ displayLog: displayLog.slice(-20) });
 }
 
+// Toolbar icon: a small TV drawn in the state color (no image files needed).
+function drawTvIcon(size, color) {
+  const c = new OffscreenCanvas(size, size);
+  const g = c.getContext('2d');
+  const s = size / 16;
+  g.fillStyle = color;
+  g.beginPath();
+  g.roundRect(1 * s, 2 * s, 14 * s, 10 * s, 2 * s);   // screen
+  g.fill();
+  g.fillRect(5 * s, 13 * s, 6 * s, 1.5 * s);          // stand
+  g.fillStyle = '#fff';
+  g.beginPath();                                       // play triangle
+  g.moveTo(6.5 * s, 4.5 * s); g.lineTo(10.5 * s, 7 * s); g.lineTo(6.5 * s, 9.5 * s);
+  g.fill();
+  return g.getImageData(0, 0, size, size);
+}
+function setStateIcon(color) {
+  return chrome.action.setIcon({ imageData: { 16: drawTvIcon(16, color), 32: drawTvIcon(32, color) } })
+    .catch(() => {});
+}
+
 // Badge: "–" no target display, "AUS" automatic mode off; tabs with a TV window show "TV"
 // (green with automatic mode on, red with it off).
 async function refreshBadge() {
@@ -117,6 +138,7 @@ async function refreshBadge() {
   const auto = await isAutoMode();
   const grey = '#757575', green = '#2e7d32', red = '#c62828';
   const toggleHint = auto ? 'Automatik an' : 'Automatik aus';
+  await setStateIcon(!target ? grey : auto ? green : red);
   await chrome.action.setBadgeBackgroundColor({ color: !target ? grey : auto ? green : red });
   await chrome.action.setBadgeText({ text: !target ? '–' : auto ? '' : 'AUS' });
   await chrome.action.setTitle({ title: 'TabToTV: ' + (target ? toggleHint : 'kein Zielbildschirm') });
