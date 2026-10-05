@@ -35,7 +35,8 @@ function check(name, ok, detail) {
   if (!ok) failed++;
 }
 
-await options(`chrome.storage.local.set({backgroundCloseSec:${CLOSE_SEC}, autoEnabled:true, parallel:false})`);
+// YouTube is on the default auto list; placeholder mode makes "page restored" checkable.
+await options(`chrome.storage.local.set({backgroundCloseSec:${CLOSE_SEC}, autoSites:["youtube.com"], parallel:false})`);
 for (const key of Object.keys(VIDEOS)) {
   await fetch(base + '/json/new?https://www.youtube.com/watch?v=' + VIDEOS[key], { method: 'PUT' });
 }
@@ -73,6 +74,6 @@ await sleep(1500);
 s = await state();
 check('owner B returns its video: background C closed too, TV free', s.owner === null && s.tabs.length === 0 && (await tvWindows()) === 0, s);
 
-await options('chrome.storage.local.set({backgroundCloseSec:30})');
+await options('chrome.storage.local.remove(["backgroundCloseSec","autoSites","parallel"])');
 console.log(failed ? `${failed} check(s) failed` : 'all checks passed');
 process.exit(failed ? 1 : 0);

@@ -4,9 +4,9 @@ const TAB2TV_POPUP_URL = 'about:blank#tab2tv';
 
 // Shared settings defaults, used by content script, background and options page.
 const TAB2TV_DEFAULTS = {
-  autoEnabled: true,
-  disabledSites: [],        // hostnames where automatic output is off
-  parallel: false,          // keep video visible in the page player
+  autoAllSites: false,      // automatic output on every website
+  autoSites: ['youtube.com'], // websites with automatic output (domain, includes subdomains)
+  parallel: true,           // keep video visible in the page player
   minDurationSec: 30,       // ignore shorter clips for automatic output
   minWidthPx: 320,          // ignore smaller videos for automatic output
   onEnded: 'stay',          // 'stay' | 'return' | 'black'
@@ -33,6 +33,28 @@ function tab2tvDisplayLabel(d, label) {
   return `${name} (${d.bounds.width}×${d.bounds.height})`;
 }
 
+// Bumped when stored values change meaning or defaults; see tab2tvMigrateSettings().
+const TAB2TV_SETTINGS_VERSION = 2;
+
 function tab2tvLoadSettings() {
   return chrome.storage.local.get(TAB2TV_DEFAULTS);
+}
+
+// v2: automatic output is opt-in per website (allow-list instead of block-list) and the parallel
+// view is the default. Drop the old values once so the new defaults apply; keep everything else.
+async function tab2tvMigrateSettings() {
+  const { settingsVersion = 1 } = await chrome.storage.local.get('settingsVersion');
+  if (settingsVersion < 2) await chrome.storage.local.remove(['autoEnabled', 'disabledSites', 'parallel']);
+  await chrome.storage.local.set({ settingsVersion: TAB2TV_SETTINGS_VERSION });
+}
+
+// "youtube.com" matches youtube.com and all its subdomains.
+function tab2tvSiteMatches(hostname, sites) {
+  return sites.some(site => hostname === site || hostname.endsWith('.' + site));
+}
+
+// Normalizes user input like "https://www.youtube.com/watch" to "youtube.com".
+function tab2tvNormalizeSite(input) {
+  const host = input.trim().toLowerCase().replace(/^[a-z]+:\/\//, '').split(/[/?#:]/)[0];
+  return host.replace(/^www\./, '');
 }

@@ -56,19 +56,44 @@ function selectedTarget() {
   return { id: d.id, width: d.bounds.width, height: d.bounds.height, label: labels[d.id] || d.name || '' };
 }
 
+async function renderShortcuts() {
+  // _execute_action is the implicit "click the toolbar icon" command; only show it if assigned.
+  const commands = (await chrome.commands.getAll())
+    .filter(c => c.name !== '_execute_action' || c.shortcut);
+  $('shortcuts').replaceChildren(...commands.map(c => {
+    const row = document.createElement('div');
+    const key = document.createElement('kbd');
+    key.textContent = c.shortcut || 'nicht festgelegt';
+    const label = c.name === '_execute_action' ? 'Wie Klick auf das Erweiterungssymbol' : c.description;
+    row.append(key, ' ', label);
+    return row;
+  }));
+}
+
+function syncAutoFields() {
+  $('autoSites').disabled = $('autoAllSites').checked;
+}
+
 tab2tvLoadSettings().then(async s => {
-  $('autoEnabled').checked = s.autoEnabled;
+  $('autoAllSites').checked = s.autoAllSites;
+  $('autoSites').value = s.autoSites.join('\n');
+  syncAutoFields();
   $('parallel').checked = s.parallel;
   $('minDurationSec').value = s.minDurationSec;
   $('minWidthPx').value = s.minWidthPx;
   $('onEnded').value = s.onEnded;
   $('backgroundCloseSec').value = s.backgroundCloseSec;
-  $('disabledSites').value = s.disabledSites.join('\n');
   savedTarget = s.targetDisplay;
   displays = await chrome.system.display.getInfo();
   await loadLabels(false);
   renderDisplays();
 });
+
+renderShortcuts();
+// Shortcuts may be changed on the browser's shortcut page while this page is open.
+addEventListener('focus', renderShortcuts);
+$('editShortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
+$('autoAllSites').addEventListener('change', syncAutoFields);
 
 chrome.system.display.onDisplayChanged.addListener(() => setTimeout(renderDisplays, 300));
 
@@ -79,14 +104,16 @@ $('showNames').addEventListener('click', async () => {
 
 $('save').addEventListener('click', async () => {
   savedTarget = selectedTarget();
+  const autoSites = [...new Set($('autoSites').value.split('\n').map(tab2tvNormalizeSite).filter(Boolean))];
+  $('autoSites').value = autoSites.join('\n');
   await chrome.storage.local.set({
-    autoEnabled: $('autoEnabled').checked,
+    autoAllSites: $('autoAllSites').checked,
+    autoSites,
     parallel: $('parallel').checked,
     minDurationSec: +$('minDurationSec').value,
     minWidthPx: +$('minWidthPx').value,
     onEnded: $('onEnded').value,
     backgroundCloseSec: Math.max(5, +$('backgroundCloseSec').value || 30),
-    disabledSites: $('disabledSites').value.split('\n').map(s => s.trim()).filter(Boolean),
     targetDisplay: savedTarget,
   });
   renderDisplays();

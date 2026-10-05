@@ -139,7 +139,11 @@ async function handleDisplayChange() {
 }
 
 chrome.runtime.onStartup.addListener(() => { refreshBadge(); logDisplays('startup'); });
-chrome.runtime.onInstalled.addListener(() => { refreshBadge(); logDisplays('installed'); });
+chrome.runtime.onInstalled.addListener(() => {
+  tab2tvMigrateSettings();
+  refreshBadge();
+  logDisplays('installed');
+});
 chrome.storage.onChanged.addListener(changes => { if (changes.targetDisplay) refreshBadge(); });
 
 // --- Popup placement ------------------------------------------------------

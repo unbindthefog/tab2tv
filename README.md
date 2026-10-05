@@ -25,12 +25,12 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken und offene T
 
 ## Bedienung
 
-- **Automatik:** Startest du ein Video per Klick (z. B. auf YouTube), erscheint es nach ca. 1 s im Vollbild auf dem TV. Auf der Seite steht ein Platzhalter mit „Zurückholen“-Button.
+- **Automatik:** Auf den Websites in der Automatik-Liste (Standard: nur `youtube.com`) erscheint ein per Klick gestartetes Video nach ca. 1 s im Vollbild auf dem TV. Maßgeblich ist die Website, auf der du bist – ein YouTube-Player eingebettet auf einer anderen Seite startet nur automatisch, wenn diese Seite in der Liste steht. Standardmäßig läuft das Video zusätzlich im Player der Seite weiter (Paralleldarstellung, Ton nur einmal); alternativ ersetzt ein Platzhalter mit „Zurückholen“-Button das Bild.
 - **Manuell:** Erweiterungssymbol klicken oder **⌥⇧T**. Fehlt dem Browser die nötige Nutzeraktion, erscheint unten rechts ein Hinweis mit Button „Auf TV abspielen“.
 - **Mehrere Tabs:** Der TV zeigt das Video des Tabs, in dem zuletzt Play gedrückt bzw. zu dem gewechselt wurde. Das vorherige TV-Fenster bleibt 30 s im Hintergrund (Zurückwechseln geht sofort) und schließt sich dann; das Video kehrt in seine Seite zurück. Es gibt höchstens zwei TV-Fenster. Die Wartezeit ist in den Optionen einstellbar.
 - **Zurückholen:** Button im Platzhalter, Erweiterungssymbol oder ⌥⇧T. Das Video läuft ohne Unterbrechung in der Seite weiter.
-- **Einstellungen:** Rechtsklick auf das Symbol → Optionen (Zielbildschirm, Automatik, Websites, Schwellwerte, Paralleldarstellung, Verhalten bei Videoende).
-- **Zielbildschirm:** Standard ist der erste zusätzliche Bildschirm. Ein ausdrücklich gewählter Bildschirm wird nach einer neuen AirPlay-Verbindung wiedererkannt (über Kennung, Name oder Auflösung). Ist er nicht verbunden, gibt die Erweiterung nichts aus. „Bildschirmnamen anzeigen“ fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ erscheinen.
+- **Einstellungen:** Rechtsklick auf das Symbol → Optionen: Zielbildschirm, Automatik (Website-Liste oder alle Websites), Paralleldarstellung, Hintergrund-Fenster, Verhalten bei Videoende, Tastenkombination. Unter „Erweitert“: Schwellwerte der Automatik (Mindestdauer/-breite), Bildschirmnamen, Diagnose.
+- **Zielbildschirm:** Standard ist der erste zusätzliche Bildschirm. Ein ausdrücklich gewählter Bildschirm wird nach einer neuen AirPlay-Verbindung wiedererkannt (über Kennung, Name oder Auflösung). Ist er nicht verbunden, gibt die Erweiterung nichts aus. „Bildschirmnamen anzeigen“ (unter „Erweitert“) fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ erscheinen.
 - **TV getrennt:** Wird der Zielbildschirm getrennt (oder auf Synchronisierung umgestellt), kehrt das Video sofort pausiert in die Seite zurück.
 
 ## Bekannte Grenzen (Prototyp)
@@ -45,5 +45,6 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken und offene T
 - `tools/cdp.mjs` – minimaler CDP-Client zum Fernsteuern/Prüfen der Testinstanz.
 - `tools/test-multitab.mjs` – Regressionstest für mehrere Tabs/TV-Fenster (Testinstanz mit offener Optionsseite).
 - `tools/testpages/embeds.html` – Testseite mit eingebetteten Playern (`python3 -m http.server 8765 --directory tools/testpages`).
+- `tools/screenshot.mjs` – Screenshot einer Seite der Testinstanz.
 - `tools/reload-ext.mjs` – lädt die Erweiterung in der Testinstanz neu. Nach Codeänderungen nötig: Brave verwendet sonst über Neustarts hinweg das zwischengespeicherte Service-Worker-Skript.
 - `docs/erkundung.md` – Ergebnisse der technischen Erkundung.
