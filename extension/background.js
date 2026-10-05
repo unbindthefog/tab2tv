@@ -111,19 +111,19 @@ async function logDisplays(event) {
 }
 
 // Badge: "–" no target display, "AUS" automatic mode off; tabs with a TV window show "TV"
-// (green with automatic mode on, grey with it off).
+// (green with automatic mode on, red with it off).
 async function refreshBadge() {
   const target = await findTargetDisplay();
   const auto = await isAutoMode();
-  const grey = '#757575', green = '#2e7d32';
+  const grey = '#757575', green = '#2e7d32', red = '#c62828';
   const toggleHint = auto ? 'Automatik an' : 'Automatik aus';
-  await chrome.action.setBadgeBackgroundColor({ color: target && auto ? green : grey });
+  await chrome.action.setBadgeBackgroundColor({ color: !target ? grey : auto ? green : red });
   await chrome.action.setBadgeText({ text: !target ? '–' : auto ? '' : 'AUS' });
   await chrome.action.setTitle({ title: 'TabToTV: ' + (target ? toggleHint : 'kein Zielbildschirm') });
   const sessions = await getSessions();
   for (const tabId of Object.keys(sessions)) {
     chrome.action.setBadgeText({ tabId: +tabId, text: 'TV' }).catch(() => {});
-    chrome.action.setBadgeBackgroundColor({ tabId: +tabId, color: auto ? green : grey }).catch(() => {});
+    chrome.action.setBadgeBackgroundColor({ tabId: +tabId, color: auto ? green : red }).catch(() => {});
     chrome.action.setTitle({ tabId: +tabId, title: 'TabToTV: läuft auf TV. ' + toggleHint }).catch(() => {});
   }
 }
