@@ -62,8 +62,8 @@ Stattdessen (Idee C als Hauptweg):
 | Zielbildschirm-Auswahl | ✅ Abgleich ID → Name → Auflösung (extern); geänderte ID wird nachgeführt; nicht verbundener Zielbildschirm → inaktiv, kein Ausweichen. `getScreenDetails()`-Namen nur nach Berechtigungsdialog (CDP-Grant greift für Erweiterungsseiten nicht) |
 | Zielbildschirm getrennt (simuliert) | ✅ Sitzungen merken ihre `displayId`; fehlt sie bei `onDisplayChanged` → Video pausiert zurück, Popup zu (macOS-Animation ~2–3 s). Real getestet (2026-10-05): Video pausiert zurück, keine Fensterreste ✅ |
 | Display-ID nach AirPlay-Neuverbindung | ⚠️ ändert sich (135 → 136) – bestätigt. Wiedererkennung über Auflösung greift, ID wird nachgeführt ✅ |
-| Brave-Neustart mit Sitzungswiederherstellung | ⚠️ Alte TV-Popups kommen als leere Fenster zurück (Kontrolle ohne Erweiterung bestätigt). Fix: Popup-URL `about:blank#tab2tv`, Popup-Tabs mit dieser URL **ohne Opener** werden bei Start/Worker-Start/Tab-Erzeugung geschlossen (Berechtigung `tabs`). Logik geprüft; Auslöser in der Testinstanz nicht prüfbar (`--load-extension` lädt erst nach der Wiederherstellung) → Test im echten Brave |
-| Testumgebung | `--use-mock-keychain` gegen Schlüsselbund-Abfragen nach Brave-Updates; Brave-Updates im laufenden Betrieb können den Start der Testinstanz an einem modalen Dialog blockieren |
+| Brave-Neustart mit Sitzungswiederherstellung | ⚠️ Alte TV-Popups kommen als leere Fenster zurück (Kontrolle ohne Erweiterung bestätigt). Fix: Popup-URL `about:blank#tab2tv`, Popup-Tabs mit dieser URL **ohne Opener** werden bei Start/Worker-Start/Tab-Erzeugung geschlossen (Berechtigung `tabs`). `onStartup` kommt bei `--load-extension` nicht an; das Aufräumen beim Worker-Start greift: wiederhergestelltes Popup nach < 4 s weg ✅ |
+| Testumgebung | Ein falscher `--load-extension`-Pfad lässt Brave beim Start an einem modalen Fehlerdialog hängen (kein CDP-Port). Diagnose: `TAB2TV_LOG=1` |
 
 ## Offene Punkte
 
