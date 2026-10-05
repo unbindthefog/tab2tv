@@ -63,6 +63,9 @@ Stattdessen (Idee C als Hauptweg):
 | Zielbildschirm getrennt (simuliert) | ✅ Sitzungen merken ihre `displayId`; fehlt sie bei `onDisplayChanged` → Video pausiert zurück, Popup zu (macOS-Animation ~2–3 s). Real getestet (2026-10-05): Video pausiert zurück, keine Fensterreste ✅ |
 | Display-ID nach AirPlay-Neuverbindung | ⚠️ ändert sich (135 → 136) – bestätigt. Wiedererkennung über Auflösung greift, ID wird nachgeführt ✅ |
 | Brave-Neustart mit Sitzungswiederherstellung | ⚠️ Alte TV-Popups kommen als leere Fenster zurück (Kontrolle ohne Erweiterung bestätigt). Fix: Popup-URL `about:blank#tab2tv`, Popup-Tabs mit dieser URL **ohne Opener** werden bei Start/Worker-Start/Tab-Erzeugung geschlossen (Berechtigung `tabs`). `onStartup` kommt bei `--load-extension` nicht an; das Aufräumen beim Worker-Start greift: wiederhergestelltes Popup nach < 4 s weg ✅ |
+| Eingebettete Player (Cross-Origin-iframes) | ✅ Content-Script in allen Frames; Popup wird aus dem iframe geöffnet (gleiche Herkunft wie das Video), Platzhalter im iframe. YouTube-Embed + youtube-nocookie: TV 2160p, Platzhalter, Übernahme zwischen zwei Embeds (eine Sitzung pro Tab, Frame-genaue Nachrichten). Symbol/Shortcut: Frames melden Kandidaten, bester gewinnt |
+| Vimeo-Embed | ❓ Vimeo spielt in der Testinstanz grundsätzlich nicht („Videos können nicht abgespielt werden“, auch ohne Erweiterung/als eigener Tab) → im echten Brave testen |
+| Wettlauf beim Speichern der Sitzungen | ⚠️→✅ Read-modify-write auf `storage.session` überschrieb sich (Übernahme zwischen Frames); jetzt Warteschlange, Entscheidungen auf aktuellem Stand |
 | Testumgebung | Ein falscher `--load-extension`-Pfad lässt Brave beim Start an einem modalen Fehlerdialog hängen (kein CDP-Port). Diagnose: `TAB2TV_LOG=1` |
 
 ## Offene Punkte
@@ -70,6 +73,6 @@ Stattdessen (Idee C als Hauptweg):
 1. **Echter Tastendruck ⌥⇧T / Klick aufs Symbol:** Liefert das der Seite Aktivierung? (Nur mit echter Eingabe testbar.) Falls nein: Hinweis-Button bleibt der Weg.
 3. Langzeit > 5 min mit Tab im Hintergrund.
 4. DRM (Widevine in Brave erst aktivieren) → erwartete Meldung; evtl. DocPiP-Fallback.
-5. Eingebettete Player in Cross-Origin-iframes (Content-Script im iframe, Popup aus iframe-Herkunft?).
+5. Vimeo-Embed im echten Brave prüfen; Videos ohne CORS (captureStream nicht möglich) – Rückfallebene?
 6. Fehlauslösung auf 10 Nachrichten-/Shopping-Seiten.
 7. Aufräumen restaurierter Popups nach Brave-Neustart im echten Brave bestätigen.

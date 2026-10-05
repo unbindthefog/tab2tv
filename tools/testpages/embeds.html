@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>TabToTV Testseite: eingebettete Player</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
+  iframe { width: 640px; height: 360px; border: 0; display: block; margin: 8px 0 24px; }
+  .decoy { width: 240px; }
+</style>
+</head>
+<body>
+<h1>Eingebettete Player</h1>
+<p>Testseite für TabToTV (via <code>python3 -m http.server</code> in <code>tools/testpages</code>).</p>
+
+<h2>Stummes Autoplay (soll nichts auslösen)</h2>
+<video class="decoy" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" autoplay muted loop playsinline></video>
+
+<h2>YouTube</h2>
+<iframe id="yt" src="https://www.youtube.com/embed/aqz-KE-bpKQ" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+
+<h2>YouTube (nocookie)</h2>
+<iframe id="ytnc" src="https://www.youtube-nocookie.com/embed/arj7oStGLkU" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+
+<h2>Vimeo</h2>
+<iframe id="vimeo" src="https://player.vimeo.com/video/76979871" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+</body>
+</html>

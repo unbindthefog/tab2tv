@@ -1,15 +1,15 @@
-// TabToTV content script (top frame only in the prototype).
+// TabToTV content script, runs in every frame.
 // Approach: the page opens a same-origin popup, the original <video> is mirrored into it
 // via captureStream(), and the service worker moves the popup fullscreen onto the TV.
 // The original element stays in the page, so the site's own player keeps full control.
+// Embedded players (cross-origin iframes) are handled by the instance inside that iframe:
+// there the video is same-origin, and the popup is opened from the iframe's origin.
 (() => {
-  if (window.top !== window) return;
-
   let settings = { ...TAB2TV_DEFAULTS };
   tab2tvLoadSettings().then(s => { settings = s; });
   chrome.storage.onChanged.addListener(() => tab2tvLoadSettings().then(s => { settings = s; }));
 
-  const isYouTube = location.hostname === 'www.youtube.com';
+  const isYouTube = /^www\.youtube(-nocookie)?\.com$/.test(location.hostname);
   const log = (...a) => console.debug('[TabToTV]', ...a);
 
   let session = null;          // active output, see startTv()
@@ -231,10 +231,22 @@
 
   addEventListener('pagehide', () => stopTv({ reason: 'page hidden' }));
 
+  // How good this frame's best video is as the target of a manual start (0 = none).
+  function candidateScore() {
+    const v = pickMainVideo();
+    if (!v) return 0;
+    const reallyPlaying = !v.paused && v.readyState >= 3;   // not just "play requested"
+    const audible = !v.muted && v.volume > 0;
+    return videoArea(v) * (reallyPlaying ? 2 : 1) * (audible ? 1.5 : 1) * (v === lastInteractedVideo ? 3 : 1);
+  }
+
   chrome.runtime.onMessage.addListener(msg => {
-    if (msg.type === 'toggle') {
-      if (session) stopTv({ reason: 'toggle' });
-      else startTv(pickMainVideo());
+    if (msg.type === 'candidates') {
+      chrome.runtime.sendMessage({ type: 'candidate', id: msg.id, score: candidateScore() }).catch(() => {});
+    } else if (msg.type === 'start') {
+      startTv(pickMainVideo());
+    } else if (msg.type === 'stop') {
+      stopTv({ reason: 'stop requested' });
     } else if (msg.type === 'displayLost') {
       stopTv({ reason: 'display lost', pause: true });
     } else if (msg.type === 'popupClosed') {

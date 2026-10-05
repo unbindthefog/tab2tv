@@ -36,7 +36,7 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken und offene T
 ## Bekannte Grenzen (Prototyp)
 
 - Kopiergeschützte Videos (DRM, z. B. Streamingdienste) können nicht ausgegeben werden; die Erweiterung zeigt das an.
-- Eingebettete Player in fremden iframes (z. B. Vimeo auf Nachrichtenseiten) werden noch nicht unterstützt.
+- Eingebettete Player (iframes, z. B. YouTube-Embeds auf fremden Seiten) werden unterstützt, sofern das Video im iframe per `captureStream()` abgreifbar ist. Videos von fremden Servern ohne CORS gehen noch nicht.
 
 ## Entwicklung
 

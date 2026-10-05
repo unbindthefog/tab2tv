@@ -1,14 +1,43 @@
 // TabToTV service worker: display tracking, popup placement, badge state, cleanup.
 importScripts('settings.js');
 
-// tabId -> { popupWindowId, openerWindowId }, persisted because the worker can be suspended.
+// tabId -> { popupWindowId, openerWindowId, displayId, frameId }, persisted because the worker
+// can be suspended. One session per tab; frameId is the (i)frame whose video is on the TV.
 async function getSessions() {
   return (await chrome.storage.session.get({ sessions: {} })).sessions;
 }
-async function setSession(tabId, value) {
-  const sessions = await getSessions();
-  if (value) sessions[tabId] = value; else delete sessions[tabId];
-  await chrome.storage.session.set({ sessions });
+// All read-modify-write updates go through one queue; interleaved updates (e.g. a stop from one
+// frame while another frame takes over the TV) would otherwise overwrite each other.
+let sessionQueue = Promise.resolve();
+function updateSessions(fn) {
+  const run = sessionQueue.then(async () => {
+    const sessions = await getSessions();
+    const result = await fn(sessions);
+    await chrome.storage.session.set({ sessions });
+    return result;
+  });
+  sessionQueue = run.catch(() => {});
+  return run;
+}
+function setSession(tabId, value) {
+  return updateSessions(sessions => {
+    if (value) sessions[tabId] = value; else delete sessions[tabId];
+  });
+}
+// Removes matching sessions, deciding on the current state inside the queue (a snapshot taken
+// earlier may already be outdated, e.g. when another frame just took over the TV).
+// Returns the removed [tabId, session] pairs.
+function removeSessionsWhere(pred) {
+  return updateSessions(sessions => {
+    const removed = Object.entries(sessions).filter(([tabId, s]) => pred(s, tabId));
+    for (const [tabId] of removed) delete sessions[tabId];
+    return removed;
+  });
+}
+
+// Messages for a session go to the frame that owns it, not to every frame of the tab.
+function sendToFrame(tabId, session, msg) {
+  return chrome.tabs.sendMessage(+tabId, msg, { frameId: session.frameId ?? 0 }).catch(() => {});
 }
 
 // --- Target display -------------------------------------------------------
@@ -57,12 +86,10 @@ async function handleDisplayChange() {
   const connected = new Set((await chrome.system.display.getInfo()).map(d => d.id));
   // Display of a session gone (AirPlay disconnected, switched to mirroring): return the video, paused.
   // macOS moves windows of a removed display to the main display, so close the popup right away.
-  const sessions = await getSessions();
-  for (const [tabId, s] of Object.entries(sessions)) {
-    if (connected.has(s.displayId)) continue;
-    chrome.tabs.sendMessage(+tabId, { type: 'displayLost' }).catch(() => {});
+  const lost = await removeSessionsWhere(s => !connected.has(s.displayId));
+  for (const [tabId, s] of lost) {
+    sendToFrame(tabId, s, { type: 'displayLost' });
     closePopup(s.popupWindowId);
-    await setSession(tabId, null);
     chrome.action.setBadgeText({ tabId: +tabId, text: '' }).catch(() => {});
     console.debug('[TabToTV] display lost, stopped tab', tabId, 'after', Date.now() - t0, 'ms');
   }
@@ -76,20 +103,31 @@ chrome.storage.onChanged.addListener(changes => { if (changes.targetDisplay) ref
 
 // --- Popup placement ------------------------------------------------------
 
-async function findPopupWindowForOpener(openerTabId) {
+async function findPopupWindowForOpener(openerTabId, excludeWindowId) {
   for (let i = 0; i < 20; i++) {
     const tabs = await chrome.tabs.query({ windowType: 'popup' });
-    const tab = tabs.find(t => t.openerTabId === openerTabId);
+    // Newest matching popup (highest tab id), in case an older one of this tab is still closing.
+    const tab = tabs
+      .filter(t => t.openerTabId === openerTabId && t.windowId !== excludeWindowId)
+      .sort((a, b) => b.id - a.id)[0];
     if (tab) return tab.windowId;
     await new Promise(r => setTimeout(r, 50));
   }
   return null;
 }
 
-async function placePopup(senderTab) {
+async function placePopup(senderTab, frameId) {
   const target = await findTargetDisplay();
   if (!target) return { ok: false, reason: 'noDisplay' };
-  const popupWindowId = await findPopupWindowForOpener(senderTab.id);
+
+  // Another frame of this tab is already on the TV (e.g. a second embedded player): end that first.
+  const previous = (await getSessions())[senderTab.id];
+  if (previous && previous.frameId !== frameId) {
+    sendToFrame(senderTab.id, previous, { type: 'stop' });
+    closePopup(previous.popupWindowId);
+  }
+
+  const popupWindowId = await findPopupWindowForOpener(senderTab.id, previous?.popupWindowId);
   if (popupWindowId == null) return { ok: false, reason: 'noPopup' };
 
   // Moving must not include width/height, and 'fullscreen' cannot be combined with bounds.
@@ -97,7 +135,9 @@ async function placePopup(senderTab) {
   await chrome.windows.update(popupWindowId, { state: 'fullscreen' });
   await chrome.windows.update(senderTab.windowId, { focused: true });
 
-  await setSession(senderTab.id, { popupWindowId, openerWindowId: senderTab.windowId, displayId: target.id });
+  await setSession(senderTab.id, {
+    popupWindowId, openerWindowId: senderTab.windowId, displayId: target.id, frameId,
+  });
   refreshBadge();
   return { ok: true, display: { width: target.bounds.width, height: target.bounds.height } };
 }
@@ -154,16 +194,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'place' && tab) {
-    placePopup(tab).then(sendResponse, e => sendResponse({ ok: false, reason: String(e) }));
+    placePopup(tab, sender.frameId).then(sendResponse, e => sendResponse({ ok: false, reason: String(e) }));
     return true;
+  }
+  if (msg.type === 'candidate' && tab) {
+    pendingPicks.get(msg.id)?.push({ frameId: sender.frameId, score: msg.score });
   }
   if (msg.type === 'raise' && tab) {
     raiseSession(tab.id).catch(() => {});
   }
   if (msg.type === 'stopped' && tab) {
-    getSessions().then(async s => {
-      if (s[tab.id]) closePopup(s[tab.id].popupWindowId);
-      await setSession(tab.id, null);
+    updateSessions(s => {
+      // Ignore a stale stop from a frame whose session was already replaced by another frame.
+      if (!s[tab.id] || s[tab.id].frameId !== sender.frameId) return false;
+      closePopup(s[tab.id].popupWindowId);
+      delete s[tab.id];
+      return true;
+    }).then(stopped => {
+      if (!stopped) return;
       chrome.action.setBadgeText({ tabId: tab.id, text: '' }).catch(() => {});
       chrome.action.setTitle({ tabId: tab.id, title: '' }).catch(() => {});
       refreshBadge();
@@ -171,8 +219,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-function sendToggle(tab) {
-  if (tab?.id != null) chrome.tabs.sendMessage(tab.id, { type: 'toggle' }).catch(() => {});
+// Symbol/shortcut: stop the running output, or start the best video of any frame in the tab.
+// Frames can't see into each other (cross-origin iframes), so each one reports its best candidate.
+const pendingPicks = new Map(); // request id -> [{ frameId, score }]
+
+async function sendToggle(tab) {
+  if (tab?.id == null) return;
+  const session = (await getSessions())[tab.id];
+  if (session) { sendToFrame(tab.id, session, { type: 'stop' }); return; }
+
+  const id = crypto.randomUUID();
+  pendingPicks.set(id, []);
+  chrome.tabs.sendMessage(tab.id, { type: 'candidates', id }).catch(() => {});
+  await new Promise(r => setTimeout(r, 250));
+  const best = pendingPicks.get(id).sort((a, b) => b.score - a.score)[0];
+  pendingPicks.delete(id);
+  if (best?.score > 0) chrome.tabs.sendMessage(tab.id, { type: 'start' }, { frameId: best.frameId }).catch(() => {});
 }
 chrome.action.onClicked.addListener(sendToggle);
 chrome.commands.onCommand.addListener((command, tab) => {
@@ -184,18 +246,15 @@ chrome.tabs.onActivated.addListener(({ tabId }) => raiseSession(tabId).catch(() 
 
 // Tab closed: make sure nothing stays on the TV.
 chrome.tabs.onRemoved.addListener(async tabId => {
-  const s = await getSessions();
-  if (s[tabId]) { closePopup(s[tabId].popupWindowId); await setSession(tabId, null); }
+  const removed = await removeSessionsWhere((s, id) => +id === tabId);
+  for (const [, s] of removed) closePopup(s.popupWindowId);
 });
 
 // Popup closed from outside (e.g. user, macOS): tell the page to clean up.
 chrome.windows.onRemoved.addListener(async windowId => {
-  const s = await getSessions();
-  for (const [tabId, v] of Object.entries(s)) {
-    if (v.popupWindowId === windowId) {
-      chrome.tabs.sendMessage(+tabId, { type: 'popupClosed' }).catch(() => {});
-      await setSession(tabId, null);
-      chrome.action.setBadgeText({ tabId: +tabId, text: '' }).catch(() => {});
-    }
+  const removed = await removeSessionsWhere(s => s.popupWindowId === windowId);
+  for (const [tabId, s] of removed) {
+    sendToFrame(tabId, s, { type: 'popupClosed' });
+    chrome.action.setBadgeText({ tabId: +tabId, text: '' }).catch(() => {});
   }
 });
