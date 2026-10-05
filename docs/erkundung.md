@@ -66,6 +66,7 @@ Stattdessen (Idee C als Hauptweg):
 | Eingebettete Player (Cross-Origin-iframes) | ✅ Content-Script in allen Frames; Popup wird aus dem iframe geöffnet (gleiche Herkunft wie das Video), Platzhalter im iframe. YouTube-Embed + youtube-nocookie: TV 2160p, Platzhalter, Übernahme zwischen zwei Embeds (eine Sitzung pro Tab, Frame-genaue Nachrichten). Symbol/Shortcut: Frames melden Kandidaten, bester gewinnt |
 | Vimeo-Embed | ❓ Vimeo spielt in der Testinstanz grundsätzlich nicht („Videos können nicht abgespielt werden“, auch ohne Erweiterung/als eigener Tab) → im echten Brave testen |
 | Wettlauf beim Speichern der Sitzungen | ⚠️→✅ Read-modify-write auf `storage.session` überschrieb sich (Übernahme zwischen Frames); jetzt Warteschlange, Entscheidungen auf aktuellem Stand |
+| Mehrere TV-Fenster begrenzen | ✅ TV-Besitzer + höchstens ein Hintergrund-Fenster; dieses schließt nach `backgroundCloseSec` (Standard 30 s, Timer im Content-Script, da der Service Worker schlafen kann); drittes Fenster schließt sofort; gibt der Besitzer zurück, schließt auch das Hintergrund-Fenster. `tools/test-multitab.mjs`: 8/8 |
 | Testumgebung | Ein falscher `--load-extension`-Pfad lässt Brave beim Start an einem modalen Fehlerdialog hängen (kein CDP-Port). Diagnose: `TAB2TV_LOG=1` |
 
 ## Offene Punkte
@@ -73,6 +74,6 @@ Stattdessen (Idee C als Hauptweg):
 1. **Echter Tastendruck ⌥⇧T / Klick aufs Symbol:** Liefert das der Seite Aktivierung? (Nur mit echter Eingabe testbar.) Falls nein: Hinweis-Button bleibt der Weg.
 3. Langzeit > 5 min mit Tab im Hintergrund.
 4. DRM (Widevine in Brave erst aktivieren) → erwartete Meldung; evtl. DocPiP-Fallback.
-5. Vimeo-Embed im echten Brave prüfen; Videos ohne CORS (captureStream nicht möglich) – Rückfallebene?
+5. Vimeo-Embed (zurückgestellt); Videos ohne CORS (captureStream nicht möglich) – Rückfallebene?
 6. Fehlauslösung auf 10 Nachrichten-/Shopping-Seiten.
 7. Aufräumen restaurierter Popups nach Brave-Neustart im echten Brave bestätigen.

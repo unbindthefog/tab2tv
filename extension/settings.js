@@ -10,6 +10,7 @@ const TAB2TV_DEFAULTS = {
   minDurationSec: 30,       // ignore shorter clips for automatic output
   minWidthPx: 320,          // ignore smaller videos for automatic output
   onEnded: 'stay',          // 'stay' | 'return' | 'black'
+  backgroundCloseSec: 30,   // close a TV window this long after another tab took over the TV
   targetDisplay: null,      // null = first non-primary display, else { id, width, height, label }
 };
 

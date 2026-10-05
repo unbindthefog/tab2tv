@@ -62,6 +62,7 @@ tab2tvLoadSettings().then(async s => {
   $('minDurationSec').value = s.minDurationSec;
   $('minWidthPx').value = s.minWidthPx;
   $('onEnded').value = s.onEnded;
+  $('backgroundCloseSec').value = s.backgroundCloseSec;
   $('disabledSites').value = s.disabledSites.join('\n');
   savedTarget = s.targetDisplay;
   displays = await chrome.system.display.getInfo();
@@ -84,6 +85,7 @@ $('save').addEventListener('click', async () => {
     minDurationSec: +$('minDurationSec').value,
     minWidthPx: +$('minWidthPx').value,
     onEnded: $('onEnded').value,
+    backgroundCloseSec: Math.max(5, +$('backgroundCloseSec').value || 30),
     disabledSites: $('disabledSites').value.split('\n').map(s => s.trim()).filter(Boolean),
     targetDisplay: savedTarget,
   });

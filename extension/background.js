@@ -8,16 +8,20 @@ async function getSessions() {
 }
 // All read-modify-write updates go through one queue; interleaved updates (e.g. a stop from one
 // frame while another frame takes over the TV) would otherwise overwrite each other.
+// State: { sessions, tvOwner } – tvOwner is the tab whose TV window is currently shown.
 let sessionQueue = Promise.resolve();
-function updateSessions(fn) {
+function updateState(fn) {
   const run = sessionQueue.then(async () => {
-    const sessions = await getSessions();
-    const result = await fn(sessions);
-    await chrome.storage.session.set({ sessions });
+    const state = await chrome.storage.session.get({ sessions: {}, tvOwner: null });
+    const result = await fn(state);
+    await chrome.storage.session.set(state);
     return result;
   });
   sessionQueue = run.catch(() => {});
   return run;
+}
+function updateSessions(fn) {
+  return updateState(state => fn(state.sessions));
 }
 function setSession(tabId, value) {
   return updateSessions(sessions => {
@@ -33,6 +37,43 @@ function removeSessionsWhere(pred) {
     for (const [tabId] of removed) delete sessions[tabId];
     return removed;
   });
+}
+
+// --- TV ownership: at most two TV windows ----------------------------------
+// Each TV window is its own macOS Space. The owner's window is shown; the previous owner stays
+// in the background for settings.backgroundCloseSec (so switching back is instant), any further
+// window is closed right away.
+
+async function takeOverTv(tabId) {
+  const { prev, evicted } = await updateState(state => {
+    const prev = state.tvOwner !== tabId ? state.tvOwner : null;
+    state.tvOwner = tabId;
+    const evicted = Object.entries(state.sessions).filter(([id]) => +id !== tabId && +id !== prev);
+    for (const [id] of evicted) delete state.sessions[id];
+    return { prev: prev != null && state.sessions[prev] ? [prev, state.sessions[prev]] : null, evicted };
+  });
+  for (const [id, s] of evicted) {
+    sendToFrame(id, s, { type: 'stop' });
+    closePopup(s.popupWindowId);
+  }
+  if (prev) sendToFrame(prev[0], prev[1], { type: 'background' });
+  const own = (await getSessions())[tabId];
+  if (own) sendToFrame(tabId, own, { type: 'foreground' });
+}
+
+// The owner's output ended: free the TV completely, so no stale background window shows up.
+async function releaseTv(tabId) {
+  const others = await updateState(state => {
+    if (state.tvOwner !== +tabId) return [];
+    state.tvOwner = null;
+    const others = Object.entries(state.sessions);
+    for (const [id] of others) delete state.sessions[id];
+    return others;
+  });
+  for (const [id, s] of others) {
+    sendToFrame(id, s, { type: 'stop' });
+    closePopup(s.popupWindowId);
+  }
 }
 
 // Messages for a session go to the frame that owns it, not to every frame of the tab.
@@ -138,6 +179,7 @@ async function placePopup(senderTab, frameId) {
   await setSession(senderTab.id, {
     popupWindowId, openerWindowId: senderTab.windowId, displayId: target.id, frameId,
   });
+  await takeOverTv(senderTab.id);
   refreshBadge();
   return { ok: true, display: { width: target.bounds.width, height: target.bounds.height } };
 }
@@ -150,6 +192,7 @@ async function raiseSession(tabId) {
   const t0 = performance.now();
   await chrome.windows.update(s.popupWindowId, { focused: true });
   await chrome.windows.update(s.openerWindowId, { focused: true });
+  await takeOverTv(+tabId);
   console.debug('[TabToTV] raised popup of tab', tabId, 'in', Math.round(performance.now() - t0), 'ms');
 }
 
@@ -212,6 +255,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     }).then(stopped => {
       if (!stopped) return;
+      releaseTv(tab.id);
       chrome.action.setBadgeText({ tabId: tab.id, text: '' }).catch(() => {});
       chrome.action.setTitle({ tabId: tab.id, title: '' }).catch(() => {});
       refreshBadge();
@@ -248,6 +292,7 @@ chrome.tabs.onActivated.addListener(({ tabId }) => raiseSession(tabId).catch(() 
 chrome.tabs.onRemoved.addListener(async tabId => {
   const removed = await removeSessionsWhere((s, id) => +id === tabId);
   for (const [, s] of removed) closePopup(s.popupWindowId);
+  releaseTv(tabId);
 });
 
 // Popup closed from outside (e.g. user, macOS): tell the page to clean up.
@@ -256,5 +301,6 @@ chrome.windows.onRemoved.addListener(async windowId => {
   for (const [tabId, s] of removed) {
     sendToFrame(tabId, s, { type: 'popupClosed' });
     chrome.action.setBadgeText({ tabId: +tabId, text: '' }).catch(() => {});
+    releaseTv(tabId);
   }
 });

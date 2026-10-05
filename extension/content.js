@@ -220,6 +220,7 @@
     log('stop:', reason);
     const s = session;
     session = null;
+    clearTimeout(s.backgroundTimer);
     for (const fn of s.cleanups) fn();
     s.captions?.stop();
     if (pause) s.video.pause();
@@ -251,6 +252,15 @@
       stopTv({ reason: 'display lost', pause: true });
     } else if (msg.type === 'popupClosed') {
       stopTv({ reason: 'popup window removed' });
+    } else if (msg.type === 'background') {
+      // Another tab owns the TV now; free this TV window unless the user comes back in time.
+      // The timer lives here, not in the service worker, which may be suspended meanwhile.
+      if (!session) return;
+      clearTimeout(session.backgroundTimer);
+      session.backgroundTimer = setTimeout(
+        () => stopTv({ reason: 'background timeout' }), settings.backgroundCloseSec * 1000);
+    } else if (msg.type === 'foreground') {
+      if (session) clearTimeout(session.backgroundTimer);
     }
   });
 
