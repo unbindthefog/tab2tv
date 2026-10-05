@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "TabToTV (Prototyp)",
+  "version": "0.1.0",
+  "description": "Gibt das Video eines Tabs im Vollbild auf dem zweiten Bildschirm aus.",
+  "permissions": ["system.display", "storage"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "TabToTV" },
+  "options_page": "options.html",
+  "commands": {
+    "toggle-tv": {
+      "suggested_key": { "default": "Alt+Shift+T" },
+      "description": "Video auf TV ausgeben / zurückholen"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["settings.js", "content.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["adapters/youtube-main.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    }
+  ]
+}
