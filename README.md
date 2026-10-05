@@ -29,13 +29,14 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken und offene T
 - **Manuell:** Erweiterungssymbol klicken oder **⌥⇧T**. Fehlt dem Browser die nötige Nutzeraktion, erscheint unten rechts ein Hinweis mit Button „Auf TV abspielen“.
 - **Mehrere Tabs:** Jeder Tab mit TV-Ausgabe hat ein eigenes TV-Fenster. Der TV zeigt immer das des aktiven Tabs bzw. des Tabs, in dem zuletzt Play gedrückt wurde.
 - **Zurückholen:** Button im Platzhalter, Erweiterungssymbol oder ⌥⇧T. Das Video läuft ohne Unterbrechung in der Seite weiter.
-- **Einstellungen:** Rechtsklick auf das Symbol → Optionen (Automatik, Websites, Schwellwerte, Paralleldarstellung, Verhalten bei Videoende).
+- **Einstellungen:** Rechtsklick auf das Symbol → Optionen (Zielbildschirm, Automatik, Websites, Schwellwerte, Paralleldarstellung, Verhalten bei Videoende).
+- **Zielbildschirm:** Standard ist der erste zusätzliche Bildschirm. Ein ausdrücklich gewählter Bildschirm wird nach einer neuen AirPlay-Verbindung wiedererkannt (über Kennung, Name oder Auflösung). Ist er nicht verbunden, gibt die Erweiterung nichts aus. „Bildschirmnamen anzeigen“ fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ erscheinen.
+- **TV getrennt:** Wird der Zielbildschirm getrennt (oder auf Synchronisierung umgestellt), kehrt das Video sofort pausiert in die Seite zurück.
 
 ## Bekannte Grenzen (Prototyp)
 
 - Kopiergeschützte Videos (DRM, z. B. Streamingdienste) können nicht ausgegeben werden; die Erweiterung zeigt das an.
 - Eingebettete Player in fremden iframes (z. B. Vimeo auf Nachrichtenseiten) werden noch nicht unterstützt.
-- Zielbildschirm ist immer der erste Nicht-Hauptbildschirm.
 
 ## Entwicklung
 

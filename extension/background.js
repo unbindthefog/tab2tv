@@ -14,10 +14,28 @@ async function setSession(tabId, value) {
 // --- Target display -------------------------------------------------------
 
 async function findTargetDisplay() {
+  const [displays, { targetDisplay }] = await Promise.all([
+    chrome.system.display.getInfo(),
+    chrome.storage.local.get({ targetDisplay: null }),
+  ]);
+  const found = tab2tvPickTarget(displays, targetDisplay);
+  // Re-identified under a new id (e.g. AirPlay reconnect): remember it for the next exact match.
+  if (found && targetDisplay && found.id !== targetDisplay.id) {
+    await chrome.storage.local.set({ targetDisplay: { ...targetDisplay, id: found.id } });
+  }
+  return found;
+}
+
+// Small diagnostic log of display changes, shown on the options page.
+async function logDisplays(event) {
   const displays = await chrome.system.display.getInfo();
-  // macOS reports empty names, and AirPlay ids may change per connection,
-  // so the prototype simply picks the first non-primary display.
-  return displays.find(d => !d.isPrimary && d.isEnabled !== false) || null;
+  const { displayLog = [] } = await chrome.storage.local.get('displayLog');
+  displayLog.push({
+    t: Date.now(), event,
+    displays: displays.map(d => ({ id: d.id, name: d.name, w: d.bounds.width, h: d.bounds.height,
+      primary: d.isPrimary, internal: d.isInternal })),
+  });
+  await chrome.storage.local.set({ displayLog: displayLog.slice(-20) });
 }
 
 async function refreshBadge() {
@@ -32,22 +50,29 @@ async function refreshBadge() {
   }
 }
 
-chrome.system.display.onDisplayChanged.addListener(async () => {
-  const target = await findTargetDisplay();
-  if (!target) {
-    // Target display gone: return all videos, paused.
-    const sessions = await getSessions();
-    for (const tabId of Object.keys(sessions)) {
-      chrome.tabs.sendMessage(+tabId, { type: 'displayLost' }).catch(() => {});
-      closePopup(sessions[tabId].popupWindowId);
-      await setSession(tabId, null);
-    }
-  }
-  refreshBadge();
-});
+chrome.system.display.onDisplayChanged.addListener(() => handleDisplayChange());
 
-chrome.runtime.onStartup.addListener(refreshBadge);
-chrome.runtime.onInstalled.addListener(refreshBadge);
+async function handleDisplayChange() {
+  const t0 = Date.now();
+  const connected = new Set((await chrome.system.display.getInfo()).map(d => d.id));
+  // Display of a session gone (AirPlay disconnected, switched to mirroring): return the video, paused.
+  // macOS moves windows of a removed display to the main display, so close the popup right away.
+  const sessions = await getSessions();
+  for (const [tabId, s] of Object.entries(sessions)) {
+    if (connected.has(s.displayId)) continue;
+    chrome.tabs.sendMessage(+tabId, { type: 'displayLost' }).catch(() => {});
+    closePopup(s.popupWindowId);
+    await setSession(tabId, null);
+    chrome.action.setBadgeText({ tabId: +tabId, text: '' }).catch(() => {});
+    console.debug('[TabToTV] display lost, stopped tab', tabId, 'after', Date.now() - t0, 'ms');
+  }
+  logDisplays('changed');
+  refreshBadge();
+}
+
+chrome.runtime.onStartup.addListener(() => { refreshBadge(); logDisplays('startup'); });
+chrome.runtime.onInstalled.addListener(() => { refreshBadge(); logDisplays('installed'); });
+chrome.storage.onChanged.addListener(changes => { if (changes.targetDisplay) refreshBadge(); });
 
 // --- Popup placement ------------------------------------------------------
 
@@ -72,7 +97,7 @@ async function placePopup(senderTab) {
   await chrome.windows.update(popupWindowId, { state: 'fullscreen' });
   await chrome.windows.update(senderTab.windowId, { focused: true });
 
-  await setSession(senderTab.id, { popupWindowId, openerWindowId: senderTab.windowId });
+  await setSession(senderTab.id, { popupWindowId, openerWindowId: senderTab.windowId, displayId: target.id });
   refreshBadge();
   return { ok: true, display: { width: target.bounds.width, height: target.bounds.height } };
 }
