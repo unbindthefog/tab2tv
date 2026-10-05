@@ -37,6 +37,7 @@
 
   // Why a video is not eligible for automatic output, or null if it is.
   function autoRejectReason(v) {
+    if (!settings.autoMode) return 'automatic mode off';
     if (!settings.autoAllSites && !tab2tvSiteMatches(siteHostname, settings.autoSites)) return 'auto off for ' + siteHostname;
     if (v.muted || v.volume === 0) return 'muted';
     if (v.getBoundingClientRect().width < settings.minWidthPx) return 'too small';
@@ -246,11 +247,11 @@
     const audible = !v.muted && v.volume > 0;
     return videoArea(v) * (reallyPlaying ? 2 : 1) * (audible ? 1.5 : 1) * (v === lastInteractedVideo ? 3 : 1);
   }
+  // Called by the service worker's probe (chrome.scripting.executeScript runs in this isolated world).
+  globalThis.tab2tvCandidateScore = candidateScore;
 
   chrome.runtime.onMessage.addListener(msg => {
-    if (msg.type === 'candidates') {
-      chrome.runtime.sendMessage({ type: 'candidate', id: msg.id, score: candidateScore() }).catch(() => {});
-    } else if (msg.type === 'start') {
+    if (msg.type === 'start') {
       startTv(pickMainVideo());
     } else if (msg.type === 'stop') {
       stopTv({ reason: 'stop requested' });

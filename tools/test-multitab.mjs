@@ -37,6 +37,8 @@ function check(name, ok, detail) {
 
 // YouTube is on the default auto list; placeholder mode makes "page restored" checkable.
 await options(`chrome.storage.local.set({backgroundCloseSec:${CLOSE_SEC}, autoSites:["youtube.com"], parallel:false})`);
+// Leftover tabs from earlier runs would be matched by URL; start clean.
+await options('chrome.tabs.query({url:"https://www.youtube.com/*"}).then(t=>chrome.tabs.remove(t.map(x=>x.id)))');
 for (const key of Object.keys(VIDEOS)) {
   await fetch(base + '/json/new?https://www.youtube.com/watch?v=' + VIDEOS[key], { method: 'PUT' });
 }
@@ -50,6 +52,10 @@ check('A on TV, owner A', s.owner === id.A && (await tvWindows()) === 1, s);
 await play('B');
 s = await state();
 check('B takes over, A in background (2 windows)', s.owner === id.B && s.tabs.length === 2 && (await tvWindows()) === 2, s);
+
+await play('B');
+s = await state();
+check('play again in B: A stays in background', s.owner === id.B && s.tabs.length === 2, s);
 
 await options(`chrome.tabs.update(${id.A},{active:true})`);
 await sleep(1500);
