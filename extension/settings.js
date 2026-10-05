@@ -49,6 +49,19 @@ async function tab2tvMigrateSettings() {
   await chrome.storage.local.set({ settingsVersion: TAB2TV_SETTINGS_VERSION });
 }
 
+// Scores the best video of every frame in a tab ([{ frameId, result: score }]).
+// Opening a TV window needs a user activation in the page, which a click in the popup or a
+// shortcut does not give by itself. Scripts injected with chrome.scripting.executeScript right in
+// the click/shortcut handler run with that user gesture, though, so after this probe the chosen
+// frame may call window.open. Call it before any await in the handler.
+// Frames can't see into each other (cross-origin iframes), so each one scores its own video.
+function tab2tvProbeFrames(tabId) {
+  return chrome.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    func: () => globalThis.tab2tvCandidateScore?.() ?? 0,
+  }).catch(() => []);
+}
+
 // "youtube.com" matches youtube.com and all its subdomains.
 function tab2tvSiteMatches(hostname, sites) {
   return sites.some(site => hostname === site || hostname.endsWith('.' + site));

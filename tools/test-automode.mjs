@@ -1,7 +1,7 @@
-// Regression test: toolbar icon switches the automatic mode (TV keeps its video while off).
+// Regression test: the automatic mode switch in the popup (TV keeps its video while off).
 // Needs the test instance (tools/test-brave.sh) with the options page open in one tab.
-// The icon click itself can't be simulated via CDP; the test calls its handler (toggleAutoMode)
-// in the service worker, evaluated with userGesture so it comes close to a real click.
+// The toolbar popup can't be opened via CDP; the test opens popup.html?tabId=… as a tab and
+// clicks its button with userGesture, like a real click in the popup.
 // Usage: node tools/test-automode.mjs
 const base = 'http://127.0.0.1:9333';
 const VIDEOS = { A: 'aqz-KE-bpKQ', B: 'arj7oStGLkU' };
@@ -27,11 +27,15 @@ const tabIdOf = key => options(`chrome.tabs.query({url:"https://www.youtube.com/
 const play = key => evalIn(VIDEOS[key], `(async()=>{const p=document.getElementById("movie_player"); p.unMute(); p.setVolume(10);
   const v=document.querySelector("video"); v.pause(); await new Promise(r=>setTimeout(r,300));
   document.querySelector(".ytp-play-button").click(); await new Promise(r=>setTimeout(r,2500)); return !v.paused})()`);
-// Wake the service worker, then call the icon handler for a tab (with user gesture).
+// Open the popup for a page tab and click "Automatik" (with user gesture), then close it again.
 async function clickIcon(tabId) {
-  await options('chrome.runtime.sendMessage({type:"status"})');
-  await evalIn('background.js', `toggleAutoMode({id:${tabId}}).then(()=>1)`, true);
+  const extId = await options('chrome.runtime.id');
+  const url = `chrome-extension://${extId}/popup.html?tabId=${tabId}`;
+  const t = await (await fetch(base + '/json/new?' + url, { method: 'PUT' })).json();
+  await sleep(1000);
+  await evalIn(`popup.html?tabId=${tabId}`, 'document.getElementById("auto").click(), 1', true);
   await sleep(3000);
+  await fetch(base + '/json/close/' + t.id);
 }
 const toast = key => evalIn(VIDEOS[key], '[...document.documentElement.children].filter(e=>e.tagName==="DIV"&&e.style.position==="fixed").length', false);
 

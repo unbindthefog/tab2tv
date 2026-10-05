@@ -116,9 +116,7 @@ async function refreshBadge() {
   const target = await findTargetDisplay();
   const auto = await isAutoMode();
   const grey = '#757575', green = '#2e7d32';
-  const toggleHint = auto
-    ? 'Automatik an – klicken zum Ausschalten (TV behält sein Video)'
-    : 'Automatik aus – klicken, um sie einzuschalten und das Video dieses Tabs auf den TV zu holen';
+  const toggleHint = auto ? 'Automatik an' : 'Automatik aus';
   await chrome.action.setBadgeBackgroundColor({ color: target && auto ? green : grey });
   await chrome.action.setBadgeText({ text: !target ? '–' : auto ? '' : 'AUS' });
   await chrome.action.setTitle({ title: 'TabToTV: ' + (target ? toggleHint : 'kein Zielbildschirm') });
@@ -256,6 +254,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     placePopup(tab, sender.frameId).then(sendResponse, e => sendResponse({ ok: false, reason: String(e) }));
     return true;
   }
+  if (msg.type === 'setAutoMode') {
+    setAutoMode(msg.on, msg.tabId, msg.probe).then(() => sendResponse(true), () => sendResponse(false));
+    return true;
+  }
   if (msg.type === 'raise' && tab) {
     // Play in a tab with a TV window: it takes the TV over, unless the automatic mode is off.
     isAutoMode().then(on => { if (on) raiseSession(tab.id).catch(() => {}); });
@@ -277,18 +279,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-// --- Icon and shortcut -------------------------------------------------------
-// Opening a TV window needs a user activation in the page, which a click on the toolbar icon or
-// a shortcut does not give by itself. Scripts injected with chrome.scripting.executeScript right
-// in the click/shortcut handler run with that user gesture, though; the probe below therefore
-// also enables a following window.open in the chosen frame. It must start before any await.
-// Frames can't see into each other (cross-origin iframes), so each one scores its best video.
-function probeFrames(tabId) {
-  return chrome.scripting.executeScript({
-    target: { tabId, allFrames: true },
-    func: () => globalThis.tab2tvCandidateScore?.() ?? 0,
-  }).catch(() => []);
-}
+// --- Popup (toolbar icon) and shortcut -----------------------------------------
+// See tab2tvProbeFrames(): the probe must be injected right in the user's click/shortcut handler,
+// so that the page gets the user activation needed to open the TV window.
 
 async function startBestVideo(tabId, probe) {
   const best = (await probe).filter(r => r.result > 0).sort((a, b) => b.result - a.result)[0];
@@ -299,16 +292,14 @@ async function isAutoMode() {
   return (await chrome.storage.local.get({ autoMode: true })).autoMode;
 }
 
-// Icon: switch the automatic mode. Off: the TV keeps its video – no following the active tab,
-// no automatic start. On: the TV follows again, starting with the video of the current tab.
-chrome.action.onClicked.addListener(toggleAutoMode);
-async function toggleAutoMode(tab) {
-  const probe = probeFrames(tab.id);
-  const wasOn = await isAutoMode();
-  await chrome.storage.local.set({ autoMode: !wasOn });
-  if (wasOn) return;
-  if ((await getSessions())[tab.id]) raiseSession(tab.id).catch(() => {});
-  else startBestVideo(tab.id, probe);
+// Automatic mode (switched in the popup). Off: the TV keeps its video – no following the active
+// tab, no automatic start. On: the TV follows again, starting with the video of the given tab
+// (probe results come from the popup, which ran the probe within the user's click).
+async function setAutoMode(on, tabId, probeResults) {
+  await chrome.storage.local.set({ autoMode: on });
+  if (!on || tabId == null) return;
+  if ((await getSessions())[tabId]) await raiseSession(tabId);
+  else await startBestVideo(tabId, probeResults || []);
 }
 
 // Shortcut: send the video of the current tab to the TV, or return it.
@@ -316,7 +307,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
   if (command === 'toggle-tv' && tab?.id != null) toggleTabOutput(tab);
 });
 async function toggleTabOutput(tab) {
-  const probe = probeFrames(tab.id);
+  const probe = tab2tvProbeFrames(tab.id);
   const session = (await getSessions())[tab.id];
   if (session) sendToFrame(tab.id, session, { type: 'stop' });
   else startBestVideo(tab.id, probe);

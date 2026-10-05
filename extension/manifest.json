@@ -6,7 +6,7 @@
   "permissions": ["system.display", "storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
-  "action": { "default_title": "TabToTV" },
+  "action": { "default_title": "TabToTV", "default_popup": "popup.html" },
   "options_page": "options.html",
   "commands": {
     "toggle-tv": {
