@@ -1,3 +1,7 @@
+// URL of the TV popup. The fragment keeps it same-origin with the opener (still "about:blank")
+// but makes leftover popups recognizable, e.g. after Brave restored them on restart.
+const TAB2TV_POPUP_URL = 'about:blank#tab2tv';
+
 // Shared settings defaults, used by content script, background and options page.
 const TAB2TV_DEFAULTS = {
   autoEnabled: true,

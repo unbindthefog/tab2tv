@@ -3,7 +3,7 @@
   "name": "TabToTV (Prototyp)",
   "version": "0.1.0",
   "description": "Gibt das Video eines Tabs im Vollbild auf dem zweiten Bildschirm aus.",
-  "permissions": ["system.display", "storage"],
+  "permissions": ["system.display", "storage", "tabs"],
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "TabToTV" },
   "options_page": "options.html",

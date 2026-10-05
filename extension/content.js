@@ -118,7 +118,7 @@
     if (!stream) return;
 
     // Must happen while the user activation is still valid.
-    const popup = window.open('', 'tab2tv_' + Date.now(), 'popup,width=480,height=270');
+    const popup = window.open(TAB2TV_POPUP_URL, 'tab2tv_' + Date.now(), 'popup,width=480,height=270');
     if (!popup) {
       toast('Popup wurde blockiert.', [{ label: 'Auf TV abspielen', action: () => startTv(video) }], 10000);
       return;

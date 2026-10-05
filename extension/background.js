@@ -117,6 +117,34 @@ function closePopup(windowId) {
   if (windowId != null) chrome.windows.remove(windowId).catch(() => {});
 }
 
+// --- Leftovers after a browser restart ---------------------------------------
+// With session restore Brave brings TV popups back as empty windows. A live TV popup always has
+// an opener tab (the page that opened it); a restored one has none.
+
+function isOrphanTvTab(tab) {
+  return (tab.url || tab.pendingUrl || '') === TAB2TV_POPUP_URL && tab.openerTabId == null;
+}
+
+async function closeOrphanPopups(reason) {
+  const tabs = await chrome.tabs.query({ windowType: 'popup' });
+  for (const tab of tabs.filter(isOrphanTvTab)) {
+    console.debug('[TabToTV] closing leftover TV popup', tab.windowId, '(' + reason + ')');
+    closePopup(tab.windowId);
+  }
+}
+
+chrome.runtime.onStartup.addListener(() => {
+  // Restored windows may appear shortly after startup.
+  for (const ms of [0, 2000, 6000]) setTimeout(() => closeOrphanPopups('startup'), ms);
+});
+// Also on every worker start: the extension may be loaded after session restore (missing the
+// events above), and the check is a single cheap query.
+closeOrphanPopups('worker start');
+chrome.tabs.onCreated.addListener(tab => { if (isOrphanTvTab(tab)) closePopup(tab.windowId); });
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
+  if (change.url && isOrphanTvTab(tab)) closePopup(tab.windowId);
+});
+
 // --- Messages and triggers ------------------------------------------------
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
