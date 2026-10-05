@@ -60,13 +60,13 @@ Stattdessen (Idee C als Hauptweg):
 | Mehrere Tabs (A auf TV, B auf TV, zurück zu A) | ⚠️→✅ Jedes Vollbild-Popup hat einen eigenen macOS-Space; der TV blieb auf B stehen. Fix: bei `tabs.onActivated` und bei Play in einem Tab mit Sitzung dessen Popup kurz fokussieren (macOS wechselt den TV-Space), dann Fokus zurück. Prüfbar über `document.visibilityState` der Popups. |
 | Testinstanz nach Codeänderung | ⚠️ Brave nutzt über Neustarts das alte Service-Worker-Skript → `tools/reload-ext.mjs` (CDP `Extensions.loadUnpacked`) |
 | Zielbildschirm-Auswahl | ✅ Abgleich ID → Name → Auflösung (extern); geänderte ID wird nachgeführt; nicht verbundener Zielbildschirm → inaktiv, kein Ausweichen. `getScreenDetails()`-Namen nur nach Berechtigungsdialog (CDP-Grant greift für Erweiterungsseiten nicht) |
-| Zielbildschirm getrennt (simuliert) | ✅ Sitzungen merken ihre `displayId`; fehlt sie bei `onDisplayChanged` → Video pausiert zurück, Popup zu (macOS-Animation ~2–3 s). Echter AirPlay-Test steht aus; Diagnoseprotokoll in den Optionen |
+| Zielbildschirm getrennt (simuliert) | ✅ Sitzungen merken ihre `displayId`; fehlt sie bei `onDisplayChanged` → Video pausiert zurück, Popup zu (macOS-Animation ~2–3 s). Real getestet (2026-10-05): Video pausiert zurück, keine Fensterreste ✅ |
+| Display-ID nach AirPlay-Neuverbindung | ⚠️ ändert sich (135 → 136) – bestätigt. Wiedererkennung über Auflösung greift, ID wird nachgeführt ✅ |
 | Brave-Neustart mit Sitzungswiederherstellung | ⚠️ Alte TV-Popups kommen als leere Fenster zurück → Aufräumen beim Start nötig |
 
 ## Offene Punkte
 
 1. **Echter Tastendruck ⌥⇧T / Klick aufs Symbol:** Liefert das der Seite Aktivierung? (Nur mit echter Eingabe testbar.) Falls nein: Hinweis-Button bleibt der Weg.
-2. AirPlay trennen/neu verbinden **real** testen; Stabilität der Display-ID über das Diagnoseprotokoll klären.
 3. Langzeit > 5 min mit Tab im Hintergrund.
 4. DRM (Widevine in Brave erst aktivieren) → erwartete Meldung; evtl. DocPiP-Fallback.
 5. Eingebettete Player in Cross-Origin-iframes (Content-Script im iframe, Popup aus iframe-Herkunft?).
