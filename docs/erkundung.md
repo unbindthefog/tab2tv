@@ -62,7 +62,8 @@ Stattdessen (Idee C als Hauptweg):
 | Zielbildschirm-Auswahl | ✅ Abgleich ID → Name → Auflösung (extern); geänderte ID wird nachgeführt; nicht verbundener Zielbildschirm → inaktiv, kein Ausweichen. `getScreenDetails()`-Namen nur nach Berechtigungsdialog (CDP-Grant greift für Erweiterungsseiten nicht) |
 | Zielbildschirm getrennt (simuliert) | ✅ Sitzungen merken ihre `displayId`; fehlt sie bei `onDisplayChanged` → Video pausiert zurück, Popup zu (macOS-Animation ~2–3 s). Real getestet (2026-10-05): Video pausiert zurück, keine Fensterreste ✅ |
 | Display-ID nach AirPlay-Neuverbindung | ⚠️ ändert sich (135 → 136) – bestätigt. Wiedererkennung über Auflösung greift, ID wird nachgeführt ✅ |
-| Brave-Neustart mit Sitzungswiederherstellung | ⚠️ Alte TV-Popups kommen als leere Fenster zurück → Aufräumen beim Start nötig |
+| Brave-Neustart mit Sitzungswiederherstellung | ⚠️ Alte TV-Popups kommen als leere Fenster zurück (Kontrolle ohne Erweiterung bestätigt). Fix: Popup-URL `about:blank#tab2tv`, Popup-Tabs mit dieser URL **ohne Opener** werden bei Start/Worker-Start/Tab-Erzeugung geschlossen (Berechtigung `tabs`). Logik geprüft; Auslöser in der Testinstanz nicht prüfbar (`--load-extension` lädt erst nach der Wiederherstellung) → Test im echten Brave |
+| Testumgebung | `--use-mock-keychain` gegen Schlüsselbund-Abfragen nach Brave-Updates; Brave-Updates im laufenden Betrieb können den Start der Testinstanz an einem modalen Dialog blockieren |
 
 ## Offene Punkte
 
@@ -71,4 +72,4 @@ Stattdessen (Idee C als Hauptweg):
 4. DRM (Widevine in Brave erst aktivieren) → erwartete Meldung; evtl. DocPiP-Fallback.
 5. Eingebettete Player in Cross-Origin-iframes (Content-Script im iframe, Popup aus iframe-Herkunft?).
 6. Fehlauslösung auf 10 Nachrichten-/Shopping-Seiten.
-7. Aufräumen restaurierter Popups nach Brave-Neustart.
+7. Aufräumen restaurierter Popups nach Brave-Neustart im echten Brave bestätigen.
