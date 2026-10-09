@@ -3,10 +3,11 @@
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const ctx = vm.createContext({ chrome: {} });
+const ctx = vm.createContext({ chrome: {}, URL });
 vm.runInContext(readFileSync(new URL('../extension/settings.js', import.meta.url), 'utf8') +
-  '\n;globalThis.api = { tab2tvPickTarget, tab2tvSiteMatches, tab2tvNormalizeSite, tab2tvDisplayLabel };', ctx);
-const { tab2tvPickTarget: pick, tab2tvSiteMatches: matches, tab2tvNormalizeSite: norm, tab2tvDisplayLabel: label } = ctx.api;
+  '\n;globalThis.api = { tab2tvPickTarget, tab2tvSiteMatches, tab2tvNormalizeSite, tab2tvDisplayLabel, tab2tvSiteHostname, tab2tvIsUsableTarget };', ctx);
+const { tab2tvPickTarget: pick, tab2tvSiteMatches: matches, tab2tvNormalizeSite: norm, tab2tvDisplayLabel: label,
+  tab2tvSiteHostname: siteHost, tab2tvIsUsableTarget: usable } = ctx.api;
 
 let failed = 0;
 function eq(name, actual, expected) {
@@ -45,6 +46,17 @@ eq('www stripped', norm('  www.youtube.com  '), 'youtube.com');
 eq('port and path stripped', norm('localhost:8765/embeds.html'), 'localhost');
 eq('subdomain kept', norm('m.youtube.com'), 'm.youtube.com');
 eq('empty', norm('   '), '');
+
+// Website of a frame (auto list is judged by the top-level site)
+eq('top frame: own host', siteHost(true, 'www.youtube.com', []), 'www.youtube.com');
+eq('embed: top-level site from ancestorOrigins', siteHost(false, 'www.youtube.com', ['https://news.example', 'https://www.spiegel.de']), 'www.spiegel.de');
+eq('embed: masked origin → unknown, not the embed host', siteHost(false, 'www.youtube.com', ['null']), null);
+eq('embed: no ancestorOrigins → unknown', siteHost(false, 'www.youtube.com', undefined), null);
+
+// Usable target / display loss (mirroring makes the TV primary or disabled)
+eq('external display usable', usable(tv), true);
+eq('primary display not usable', usable(mac), false);
+eq('disabled display not usable', usable(disp('7', 1920, 1080, { isEnabled: false })), false);
 
 // Display label
 eq('label fallback', label(tv), 'Externer Bildschirm (1920×1080)');

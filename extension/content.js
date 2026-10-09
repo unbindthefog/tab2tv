@@ -12,12 +12,8 @@
   const isYouTube = /^www\.youtube(-nocookie)?\.com$/.test(location.hostname);
   const log = (...a) => console.debug('[TabToTV]', ...a);
 
-  // The website the user is on: for an embedded player that is the top-level page, not the iframe.
-  // ancestorOrigins can be masked ("null") by a referrer policy; then fall back to the frame itself.
-  const siteHostname = (() => {
-    const top = location.ancestorOrigins?.[location.ancestorOrigins.length - 1];
-    try { return top ? new URL(top).hostname : location.hostname; } catch { return location.hostname; }
-  })();
+  // The website the user is on (top-level page, also for embedded players); null if masked.
+  const siteHostname = tab2tvSiteHostname(window.top === window, location.hostname, location.ancestorOrigins);
 
   let session = null;          // active output, see startTv()
   let lastInteractedVideo = null;
@@ -38,7 +34,9 @@
   // Why a video is not eligible for automatic output, or null if it is.
   function autoRejectReason(v) {
     if (!settings.autoMode) return 'automatic mode off';
-    if (!settings.autoAllSites && !tab2tvSiteMatches(siteHostname, settings.autoSites)) return 'auto off for ' + siteHostname;
+    if (!settings.autoAllSites && !(siteHostname && tab2tvSiteMatches(siteHostname, settings.autoSites))) {
+      return 'auto off for ' + (siteHostname || 'unknown site (masked origin)');
+    }
     if (v.muted || v.volume === 0) return 'muted';
     if (v.getBoundingClientRect().width < settings.minWidthPx) return 'too small';
     const d = v.duration;

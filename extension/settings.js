@@ -15,12 +15,18 @@ const TAB2TV_DEFAULTS = {
   targetDisplay: null,      // null = first non-primary display, else { id, width, height, label }
 };
 
+// A display that can show the TV window: connected, enabled and not the main display. A display
+// that becomes primary or disabled (e.g. switched to mirroring) counts as lost.
+function tab2tvIsUsableTarget(d) {
+  return !d.isPrimary && d.isEnabled !== false;
+}
+
 // Finds the chosen target among the connected displays (chrome.system.display.getInfo()).
 // macOS reports empty display names and AirPlay may assign new ids per connection, so match
 // by id first, then by label (if known), then by resolution of an external display.
 // A chosen display that is not connected yields null: never fall back to another monitor.
 function tab2tvPickTarget(displays, target) {
-  const candidates = displays.filter(d => !d.isPrimary && d.isEnabled !== false);
+  const candidates = displays.filter(tab2tvIsUsableTarget);
   if (!target) return candidates[0] || null;
   return candidates.find(d => d.id === target.id)
     || (target.label && candidates.find(d => d.name && d.name === target.label))
@@ -61,6 +67,16 @@ function tab2tvProbeFrames(tabId) {
     target: { tabId, allFrames: true },
     func: () => globalThis.tab2tvCandidateScore?.() ?? 0,
   }).catch(e => { console.debug('[TabToTV] probe failed:', e.message); return null; });
+}
+
+// Hostname of the website the user is on. For an embedded player that is the top-level page,
+// taken from location.ancestorOrigins (last entry). A referrer policy can mask it ("null"); then
+// the site is unknown (null) – never the iframe's own host, which would let e.g. a YouTube embed
+// on any page count as youtube.com.
+function tab2tvSiteHostname(isTopFrame, ownHostname, ancestorOrigins) {
+  if (isTopFrame) return ownHostname;
+  const top = ancestorOrigins?.[ancestorOrigins.length - 1];
+  try { return top ? new URL(top).hostname || null : null; } catch { return null; }
 }
 
 // "youtube.com" matches youtube.com and all its subdomains.

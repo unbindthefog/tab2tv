@@ -74,8 +74,8 @@ Stattdessen (Idee C als Hauptweg):
 ## Offene Punkte
 
 1. **Echter Tastendruck ⌥⇧T / Klick aufs Symbol** mit dem `executeScript`-Weg bestätigen (nur mit echter Eingabe testbar). Falls nein: Hinweis-Button bleibt der Weg.
-3. Langzeit > 5 min mit Tab im Hintergrund.
-4. DRM (Widevine in Brave erst aktivieren) → erwartete Meldung; evtl. DocPiP-Fallback.
-5. Vimeo-Embed (zurückgestellt); Videos ohne CORS (captureStream nicht möglich) – Rückfallebene?
-6. Fehlauslösung auf 10 Nachrichten-/Shopping-Seiten.
-7. Aufräumen restaurierter Popups nach Brave-Neustart im echten Brave bestätigen.
+2. Langzeit > 5 min mit Tab im Hintergrund.
+3. DRM (Widevine in Brave erst aktivieren) → erwartete Meldung; evtl. DocPiP-Fallback.
+4. Vimeo-Embed (zurückgestellt); Videos ohne CORS (captureStream nicht möglich) – Rückfallebene?
+5. Fehlauslösung: `tools/scan-sites.mjs` – 12 Seiten, 0 Treffer; Cookie-Banner in iframes verhindern auf 9 Seiten das Laden der Videos → Ablehnen in iframes ergänzen und wiederholen.
+6. Aufräumen restaurierter Popups nach Brave-Neustart im echten Brave bestätigen.

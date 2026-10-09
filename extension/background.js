@@ -66,7 +66,8 @@ async function takeOverTv(tabId) {
 // The owner's output ended: free the TV completely, so no stale background window shows up.
 async function releaseTv(tabId) {
   const others = await updateState(state => {
-    if (state.tvOwner !== +tabId) return [];
+    // Only if the owner really has no output left (not e.g. while one of its frames takes over).
+    if (state.tvOwner !== +tabId || state.sessions[tabId]) return [];
     state.tvOwner = null;
     const others = Object.entries(state.sessions);
     for (const [id] of others) delete state.sessions[id];
@@ -169,10 +170,11 @@ chrome.system.display.onDisplayChanged.addListener(() => handleDisplayChange());
 
 async function handleDisplayChange() {
   const t0 = Date.now();
-  const connected = new Set((await chrome.system.display.getInfo()).map(d => d.id));
-  // Display of a session gone (AirPlay disconnected, switched to mirroring): return the video, paused.
+  const usable = new Set((await chrome.system.display.getInfo()).filter(tab2tvIsUsableTarget).map(d => d.id));
+  // Display of a session gone, primary or disabled (AirPlay disconnected, switched to mirroring):
+  // return the video, paused.
   // macOS moves windows of a removed display to the main display, so close the popup right away.
-  const lost = await removeSessionsWhere(s => !connected.has(s.displayId));
+  const lost = await removeSessionsWhere(s => !usable.has(s.displayId));
   for (const [tabId, s] of lost) {
     sendToFrame(tabId, s, { type: 'displayLost' });
     closePopup(s.popupWindowId);
@@ -201,7 +203,8 @@ async function findPopupWindowForOpener(openerTabId, excludeWindowId) {
     const tabs = await chrome.tabs.query({ windowType: 'popup' });
     // Newest matching popup (highest tab id), in case an older one of this tab is still closing.
     const tab = tabs
-      .filter(t => t.openerTabId === openerTabId && t.windowId !== excludeWindowId)
+      .filter(t => t.openerTabId === openerTabId && t.windowId !== excludeWindowId
+        && (t.url || t.pendingUrl) === TAB2TV_POPUP_URL)   // never a popup the site opened itself
       .sort((a, b) => b.id - a.id)[0];
     if (tab) return tab.windowId;
     await new Promise(r => setTimeout(r, 50));
@@ -214,14 +217,21 @@ async function placePopup(senderTab, frameId) {
   if (!target) return { ok: false, reason: 'noDisplay' };
 
   // Another frame of this tab is already on the TV (e.g. a second embedded player): end that first.
+  // Remove its session first (atomically), so that frame's late "stopped" message and the removal
+  // of its popup find nothing to release – this tab keeps owning the TV, other tabs keep theirs.
   const previous = (await getSessions())[senderTab.id];
   if (previous && previous.frameId !== frameId) {
+    await updateSessions(s => { if (s[senderTab.id]?.frameId === previous.frameId) delete s[senderTab.id]; });
     sendToFrame(senderTab.id, previous, { type: 'stop' });
     closePopup(previous.popupWindowId);
   }
 
   const popupWindowId = await findPopupWindowForOpener(senderTab.id, previous?.popupWindowId);
-  if (popupWindowId == null) return { ok: false, reason: 'noPopup' };
+  if (popupWindowId == null) {
+    // The previous frame's session may already be gone: don't leave the TV owned by a tab without output.
+    releaseTv(senderTab.id);
+    return { ok: false, reason: 'noPopup' };
+  }
 
   // Moving must not include width/height, and 'fullscreen' cannot be combined with bounds.
   await chrome.windows.update(popupWindowId, { left: target.bounds.left + 40, top: target.bounds.top + 40 });
@@ -310,6 +320,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     placePopup(tab, sender.frameId).then(sendResponse, e => sendResponse({ ok: false, reason: String(e) }));
     return true;
   }
+  // Popup commands only from the extension's own pages, never from a content-script frame.
+  const fromExtensionPage = sender.id === chrome.runtime.id && !!sender.url?.startsWith(chrome.runtime.getURL(''));
+  if (['setAutoMode', 'closeAll', 'toggleTab'].includes(msg.type) && !fromExtensionPage) return;
   if (msg.type === 'setAutoMode') {
     setAutoMode(msg.on, msg.tabId, msg.probe).then(() => sendResponse(true), () => sendResponse(false));
     return true;

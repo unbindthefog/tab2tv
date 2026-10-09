@@ -26,7 +26,7 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken und offene T
 ## Bedienung
 
 - **Automatik:** Auf den Websites in der Automatik-Liste (Standard: nur `youtube.com`) erscheint ein per Klick gestartetes Video nach ca. 1 s im Vollbild auf dem TV. Maßgeblich ist die Website, auf der du bist – ein YouTube-Player eingebettet auf einer anderen Seite startet nur automatisch, wenn diese Seite in der Liste steht. Standardmäßig läuft das Video zusätzlich im Player der Seite weiter (Paralleldarstellung, Ton nur einmal); alternativ ersetzt ein Platzhalter mit „Zurückholen“-Button das Bild.
-- **Menü am Erweiterungssymbol** (Tastenfeld im Cockpit-Stil, Leuchtanzeige unter jeder Taste):
+- **Menü am Erweiterungssymbol** (schlichtes Tastenfeld, hell/dunkel nach System, Statuszeile unter jeder Taste):
   - **SEND:** Video dieses Tabs auf den TV; leuchtet „ON“, solange der Tab auf dem TV läuft – erneut drücken holt es zurück (wie **⌥⇧T**).
   - **AUTO:** Automatik „ON“ (grün) / „OFF“ (rot, Symbol rot mit „AUS“). Aus: Der TV behält sein Video, folgt keinem Tabwechsel und startet nichts automatisch – so kannst du ein Video weiterschauen und in anderen Tabs stöbern. Wieder an: holt sofort das Video des aktuellen Tabs auf den TV.
   - **CLEAR:** schließt alle TV-Fenster (Anzeige: Anzahl offener TV-Fenster); die Videos kehren in ihre Seiten zurück.
