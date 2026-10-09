@@ -133,21 +133,36 @@ function setStateIcon(color) {
 
 // Badge: "–" no target display, "AUS" automatic mode off; tabs with a TV window show "TV"
 // (green with automatic mode on, red with it off).
-async function refreshBadge() {
+// Runs serialized: overlapping runs (sessions change several times per TV handover) could
+// otherwise finish out of order and leave an outdated per-tab badge.
+let badgeQueue = Promise.resolve();
+let badgeTvTabs = null;   // tabs that got the "TV" badge in the last run (null: unknown)
+function refreshBadge() {
+  badgeQueue = badgeQueue.then(refreshBadgeNow, refreshBadgeNow);
+  return badgeQueue;
+}
+async function refreshBadgeNow() {
   const target = await findTargetDisplay();
   const auto = await isAutoMode();
   const grey = '#757575', green = '#2e7d32', red = '#c62828';
   const toggleHint = auto ? 'Automatik an' : 'Automatik aus';
   await setStateIcon(!target ? grey : auto ? green : red);
-  await chrome.action.setBadgeBackgroundColor({ color: !target ? grey : auto ? green : red });
+  const globalColor = !target ? grey : auto ? green : red;
+  await chrome.action.setBadgeBackgroundColor({ color: globalColor });
   await chrome.action.setBadgeText({ text: !target ? '–' : auto ? '' : 'AUS' });
-  await chrome.action.setTitle({ title: 'TabToTV: ' + (target ? toggleHint : 'kein Zielbildschirm') });
-  const sessions = await getSessions();
-  for (const tabId of Object.keys(sessions)) {
-    chrome.action.setBadgeText({ tabId: +tabId, text: 'TV' }).catch(() => {});
-    chrome.action.setBadgeBackgroundColor({ tabId: +tabId, color: auto ? green : red }).catch(() => {});
-    chrome.action.setTitle({ tabId: +tabId, title: 'TabToTV: läuft auf TV. ' + toggleHint }).catch(() => {});
+  const globalTitle = 'TabToTV: ' + (target ? toggleHint : 'kein Zielbildschirm');
+  await chrome.action.setTitle({ title: globalTitle });
+  // Per tab only the text "TV" (color and tooltip stay global, so nothing per tab can go stale).
+  // Sessions end in several places (evicted, released, closed), so diff against the last run
+  // instead of tracking each path; the first run after a worker start covers all tabs.
+  // Without a target display, nothing is on TV.
+  const onTv = new Set(Object.keys(target ? await getSessions() : {}).map(Number));
+  const tabIds = badgeTvTabs ? new Set([...badgeTvTabs, ...onTv]) : (await chrome.tabs.query({})).map(t => t.id);
+  for (const tabId of tabIds) {
+    // null (not '') clears the tab value so the global badge ("AUS", "–") shows again.
+    chrome.action.setBadgeText({ tabId, text: onTv.has(tabId) ? 'TV' : null }).catch(() => {});
   }
+  badgeTvTabs = onTv;
 }
 
 chrome.system.display.onDisplayChanged.addListener(() => handleDisplayChange());
@@ -161,7 +176,7 @@ async function handleDisplayChange() {
   for (const [tabId, s] of lost) {
     sendToFrame(tabId, s, { type: 'displayLost' });
     closePopup(s.popupWindowId);
-    chrome.action.setBadgeText({ tabId: +tabId, text: '' }).catch(() => {});
+    chrome.action.setBadgeText({ tabId: +tabId, text: null }).catch(() => {});
     console.debug('[TabToTV] display lost, stopped tab', tabId, 'after', Date.now() - t0, 'ms');
   }
   logDisplays('changed');
@@ -169,13 +184,14 @@ async function handleDisplayChange() {
 }
 
 chrome.runtime.onStartup.addListener(() => { refreshBadge(); logDisplays('startup'); });
-chrome.runtime.onInstalled.addListener(() => {
-  tab2tvMigrateSettings();
+chrome.runtime.onInstalled.addListener(async () => {
+  await tab2tvMigrateSettings();
   refreshBadge();
   logDisplays('installed');
 });
 chrome.storage.onChanged.addListener(changes => {
-  if (changes.targetDisplay || changes.autoMode) refreshBadge();
+  // changes.sessions (storage.session): any session started or ended, whichever code path did it.
+  if (changes.targetDisplay || changes.autoMode || changes.sessions) refreshBadge();
 });
 
 // --- Popup placement ------------------------------------------------------
@@ -280,6 +296,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     setAutoMode(msg.on, msg.tabId, msg.probe).then(() => sendResponse(true), () => sendResponse(false));
     return true;
   }
+  if (msg.type === 'toggleTab') {
+    toggleTabOutput(msg.tabId, msg.probe || []).then(ok => sendResponse(ok), () => sendResponse(false));
+    return true;
+  }
   if (msg.type === 'raise' && tab) {
     // Play in a tab with a TV window: it takes the TV over, unless the automatic mode is off.
     isAutoMode().then(on => { if (on) raiseSession(tab.id).catch(() => {}); });
@@ -294,8 +314,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }).then(stopped => {
       if (!stopped) return;
       releaseTv(tab.id);
-      chrome.action.setBadgeText({ tabId: tab.id, text: '' }).catch(() => {});
-      chrome.action.setTitle({ tabId: tab.id, title: '' }).catch(() => {});
       refreshBadge();
     });
   }
@@ -305,13 +323,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // See tab2tvProbeFrames(): the probe must be injected right in the user's click/shortcut handler,
 // so that the page gets the user activation needed to open the TV window.
 
+// Starts the best-scored video of the tab. False if there is none or the frame can't be reached
+// (e.g. a tab opened before the extension was reloaded has no content script).
 async function startBestVideo(tabId, probe) {
-  const best = (await probe).filter(r => r.result > 0).sort((a, b) => b.result - a.result)[0];
-  if (best) chrome.tabs.sendMessage(tabId, { type: 'start' }, { frameId: best.frameId }).catch(() => {});
+  const best = ((await probe) || []).filter(r => r.result > 0).sort((a, b) => b.result - a.result)[0];
+  if (!best) return false;
+  return chrome.tabs.sendMessage(tabId, { type: 'start' }, { frameId: best.frameId })
+    .then(() => true, () => false);
 }
 
 async function isAutoMode() {
-  return (await chrome.storage.local.get({ autoMode: true })).autoMode;
+  return (await chrome.storage.local.get({ autoMode: TAB2TV_DEFAULTS.autoMode })).autoMode;
 }
 
 // Automatic mode (switched in the popup). Off: the TV keeps its video – no following the active
@@ -326,13 +348,17 @@ async function setAutoMode(on, tabId, probeResults) {
 
 // Shortcut: send the video of the current tab to the TV, or return it.
 chrome.commands.onCommand.addListener((command, tab) => {
-  if (command === 'toggle-tv' && tab?.id != null) toggleTabOutput(tab);
+  if (command === 'toggle-tv' && tab?.id != null) {
+    toggleTabOutput(tab.id, tab2tvProbeFrames(tab.id))
+      .catch(e => console.debug('[TabToTV] shortcut failed:', e.message));
+  }
 });
-async function toggleTabOutput(tab) {
-  const probe = tab2tvProbeFrames(tab.id);
-  const session = (await getSessions())[tab.id];
-  if (session) sendToFrame(tab.id, session, { type: 'stop' });
-  else startBestVideo(tab.id, probe);
+// Shortcut and popup button. The probe must already be running (started within the user's input).
+async function toggleTabOutput(tabId, probe) {
+  const session = (await getSessions())[tabId];
+  if (!session) return startBestVideo(tabId, probe);
+  return chrome.tabs.sendMessage(tabId, { type: 'stop' }, { frameId: session.frameId ?? 0 })
+    .then(() => true, () => false);
 }
 
 // With the automatic mode on, the TV follows the active tab if that tab has an output session.
@@ -352,7 +378,7 @@ chrome.windows.onRemoved.addListener(async windowId => {
   const removed = await removeSessionsWhere(s => s.popupWindowId === windowId);
   for (const [tabId, s] of removed) {
     sendToFrame(tabId, s, { type: 'popupClosed' });
-    chrome.action.setBadgeText({ tabId: +tabId, text: '' }).catch(() => {});
+    chrome.action.setBadgeText({ tabId: +tabId, text: null }).catch(() => {});
     releaseTv(tabId);
   }
 });

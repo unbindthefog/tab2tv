@@ -29,20 +29,16 @@
     <select id="targetDisplay"></select>
   </label>
   <div id="displayStatus" class="hint"></div>
-  <div class="hint">Der gewählte Bildschirm wird nach einer neuen AirPlay-Verbindung wiedererkannt. Ist er nicht verbunden, gibt die Erweiterung nichts aus – auch nicht auf einem anderen Monitor.</div>
 </fieldset>
 <fieldset>
   <legend>Automatik</legend>
   <label>Videos auf diesen Websites beim Start automatisch auf den TV ausgeben (eine pro Zeile, gilt auch für Subdomains):
     <textarea id="autoSites"></textarea></label>
   <label><input type="checkbox" id="autoAllSites"> Auf allen Websites automatisch ausgeben</label>
-  <div class="hint">Im Menü des Erweiterungssymbols lässt sich die Automatik insgesamt aus- (der TV behält sein Video und folgt keinem Tabwechsel) und wieder einschalten (das Video des aktuellen Tabs kommt auf den TV). Einzelne Videos jederzeit per Tastenkombination.</div>
 </fieldset>
 <fieldset>
   <legend>Darstellung</legend>
-  <label><input type="checkbox" id="parallel"> Paralleldarstellung: Video läuft zusätzlich im Player der Seite weiter</label>
-  <label>Ein TV-Fenster im Hintergrund (anderer Tab hat den TV übernommen) schließen nach
-    <input type="number" id="backgroundCloseSec" min="5"> Sekunden</label>
+  <label><input type="checkbox" id="parallel"> Paralleldarstellung: Video läuft im Player der Seite weiter</label>
   <label>Bei Videoende:
     <select id="onEnded">
       <option value="stay">auf dem TV stehen lassen</option>
@@ -61,6 +57,9 @@
   <h3>Automatik: Schwellwerte</h3>
   <label>Mindestdauer <input type="number" id="minDurationSec" min="0"> Sekunden</label>
   <label>Mindestbreite im Player <input type="number" id="minWidthPx" min="0"> px</label>
+  <h3>Mehrere Tabs</h3>
+  <label>Ein TV-Fenster im Hintergrund (anderer Tab hat den TV übernommen) schließen nach
+    <input type="number" id="backgroundCloseSec" min="5"> Sekunden</label>
   <h3>Bildschirme</h3>
   <button id="showNames" type="button">Bildschirmnamen anzeigen</button>
   <div class="hint">Fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ statt „Externer Bildschirm“ erscheinen.</div>

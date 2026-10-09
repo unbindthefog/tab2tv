@@ -24,19 +24,21 @@ const options = expr => evalIn('options.html', expr, false);
 const tvWindows = async () => (await list()).filter(t => t.url === 'about:blank#tab2tv').length;
 const state = () => options('chrome.storage.session.get({sessions:{},tvOwner:null}).then(s=>({owner:s.tvOwner, tabs:Object.keys(s.sessions).map(Number)}))');
 const tabIdOf = key => options(`chrome.tabs.query({url:"https://www.youtube.com/watch?v=${VIDEOS[key]}*"}).then(t=>t[0]?.id)`);
-const play = key => evalIn(VIDEOS[key], `(async()=>{const p=document.getElementById("movie_player"); p.unMute(); p.setVolume(10);
+const play = key => evalIn(VIDEOS[key], `(async()=>{const no=[...document.querySelectorAll("button")].find(b=>/Alle ablehnen|Reject all/i.test(b.innerText)); if(no){no.click(); await new Promise(r=>setTimeout(r,4000));}
+  const p=document.getElementById("movie_player"); p.unMute(); p.setVolume(10);
   const v=document.querySelector("video"); v.pause(); await new Promise(r=>setTimeout(r,300));
   document.querySelector(".ytp-play-button").click(); await new Promise(r=>setTimeout(r,2500)); return !v.paused})()`);
-// Open the popup for a page tab and click "Automatik" (with user gesture), then close it again.
-async function clickIcon(tabId) {
+// Open the popup for a page tab and click a button (with user gesture), then close it again.
+async function clickPopup(tabId, button) {
   const extId = await options('chrome.runtime.id');
   const url = `chrome-extension://${extId}/popup.html?tabId=${tabId}`;
   const t = await (await fetch(base + '/json/new?' + url, { method: 'PUT' })).json();
   await sleep(1000);
-  await evalIn(`popup.html?tabId=${tabId}`, 'document.getElementById("auto").click(), 1', true);
+  await evalIn(`popup.html?tabId=${tabId}`, `document.getElementById("${button}").click(), 1`, true);
   await sleep(3000);
   await fetch(base + '/json/close/' + t.id);
 }
+const clickIcon = tabId => clickPopup(tabId, 'auto');
 const toast = key => evalIn(VIDEOS[key], '[...document.documentElement.children].filter(e=>e.tagName==="DIV"&&e.style.position==="fixed").length', false);
 
 let failed = 0;
@@ -79,6 +81,16 @@ await options(`chrome.tabs.update(${id.A},{active:true})`);
 await sleep(1500);
 s = await state();
 if (onTv) check('switch to A: TV follows again (A still in background)', s.owner === id.A, s);
+
+// Popup button "Video dieses Tabs auf den TV" / "Zurückholen".
+s = await state();
+check('precondition: B is on TV', s.tabs.includes(id.B), s);
+await clickPopup(id.B, 'tabToggle');
+s = await state();
+check('popup tab button on B (on TV): returns B', !s.tabs.includes(id.B), s);
+await clickPopup(id.B, 'tabToggle');
+s = await state();
+check('popup tab button again: B on TV', s.owner === id.B && s.tabs.includes(id.B), s);
 
 // Clean up: return everything.
 for (const key of Object.keys(VIDEOS)) {

@@ -4,25 +4,26 @@
 <meta charset="utf-8">
 <title>TabToTV</title>
 <style>
-  body { font: 13px/1.4 system-ui, sans-serif; width: 270px; margin: 0; padding: 12px 14px; color: #222; }
+  body { font: 13px/1.4 system-ui, sans-serif; width: 226px; margin: 0; padding: 12px 12px; color: #222; }
   h1 { font-size: 15px; margin: 0 0 8px; }
   .status { color: #555; margin: 0 0 4px; }
-  .status.warn { color: #b26a00; }
+  .status.warn { color: #c62828; }
   button { font: inherit; width: 100%; border: 0; border-radius: 8px; padding: 9px 10px; cursor: pointer; margin: 6px 0; }
   #auto { font-weight: 600; font-size: 14px; color: #fff; background: #2e7d32; }
   #auto.off { background: #c62828; }
+  #tabToggle { background: #1565c0; color: #fff; }
+  #tabToggle:disabled { opacity: .5; cursor: default; }
   #options { background: #eee; color: #222; }
   .hint { color: #666; font-size: 12px; margin: 2px 0 8px; }
-  kbd { font: 12px ui-monospace, monospace; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; padding: 0 4px; }
 </style>
 </head>
 <body>
-<h1>📺 TabToTV</h1>
+<h1>TabToTV</h1>
 <p id="display" class="status"></p>
 <p id="tabState" class="status"></p>
+<button id="tabToggle" type="button"></button>
 <button id="auto" type="button"></button>
 <p id="autoHint" class="hint"></p>
-<p id="shortcut" class="hint"></p>
 <button id="options" type="button">Einstellungen …</button>
 <script src="settings.js"></script>
 <script src="popup.js"></script>

@@ -49,7 +49,8 @@ async function tab2tvMigrateSettings() {
   await chrome.storage.local.set({ settingsVersion: TAB2TV_SETTINGS_VERSION });
 }
 
-// Scores the best video of every frame in a tab ([{ frameId, result: score }]).
+// Scores the best video of every frame in a tab ([{ frameId, result: score }]); null if the
+// page does not allow injection (browser pages, web store).
 // Opening a TV window needs a user activation in the page, which a click in the popup or a
 // shortcut does not give by itself. Scripts injected with chrome.scripting.executeScript right in
 // the click/shortcut handler run with that user gesture, though, so after this probe the chosen
@@ -59,7 +60,7 @@ function tab2tvProbeFrames(tabId) {
   return chrome.scripting.executeScript({
     target: { tabId, allFrames: true },
     func: () => globalThis.tab2tvCandidateScore?.() ?? 0,
-  }).catch(() => []);
+  }).catch(e => { console.debug('[TabToTV] probe failed:', e.message); return null; });
 }
 
 // "youtube.com" matches youtube.com and all its subdomains.

@@ -39,7 +39,7 @@ async function renderDisplays() {
   const current = tab2tvPickTarget(displays, savedTarget);
   $('displayStatus').textContent = current
     ? 'Ausgabe aktuell auf: ' + tab2tvDisplayLabel(current, labels[current.id])
-    : 'Kein Zielbildschirm verbunden – die Erweiterung bleibt inaktiv.';
+    : 'Kein Zielbildschirm verbunden.';
 
   const { displayLog = [] } = await chrome.storage.local.get('displayLog');
   $('displayLog').textContent = displayLog.slice().reverse().map(e =>

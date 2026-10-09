@@ -24,7 +24,8 @@ const options = expr => evalIn('options.html', expr, false);
 const state = () => options('chrome.storage.session.get({sessions:{},tvOwner:null}).then(s=>({owner:s.tvOwner, tabs:Object.keys(s.sessions).map(Number)}))');
 const tabIdOf = async key => options(`chrome.tabs.query({url:"https://www.youtube.com/watch?v=${VIDEOS[key]}*"}).then(t=>t[0]?.id)`);
 // Click play with an audible volume (YouTube restores its stored volume, so use the player API).
-const play = key => evalIn(VIDEOS[key], `(async()=>{const p=document.getElementById("movie_player"); p.unMute(); p.setVolume(10);
+const play = key => evalIn(VIDEOS[key], `(async()=>{const no=[...document.querySelectorAll("button")].find(b=>/Alle ablehnen|Reject all/i.test(b.innerText)); if(no){no.click(); await new Promise(r=>setTimeout(r,4000));}
+  const p=document.getElementById("movie_player"); p.unMute(); p.setVolume(10);
   const v=document.querySelector("video"); v.pause(); await new Promise(r=>setTimeout(r,300));
   document.querySelector(".ytp-play-button").click(); await new Promise(r=>setTimeout(r,2500)); return !v.paused})()`);
 const placeholder = key => evalIn(VIDEOS[key], 'document.querySelectorAll(".tab2tv-placeholder").length', false);

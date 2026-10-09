@@ -299,9 +299,9 @@
     ph.className = 'tab2tv-placeholder' + (settings.parallel ? ' parallel' : '');
     const label = document.createElement('div');
     label.className = 'tab2tv-label';
-    label.textContent = '📺 Wird auf TV wiedergegeben';
+    label.textContent = 'Wird auf TV wiedergegeben';
     const btn = document.createElement('button');
-    btn.textContent = settings.parallel ? '📺 Zurückholen' : 'Zurückholen';
+    btn.textContent = 'Zurückholen';
     btn.addEventListener('click', e => { e.stopPropagation(); stopTv({ reason: 'button' }); });
     ph.append(label, btn);
     v.after(ph);
@@ -405,7 +405,7 @@
       .b{display:flex;gap:8px;justify-content:flex-end} button{font:inherit;border:0;border-radius:6px;padding:5px 12px;cursor:pointer}
       .p{background:#2e7d32;color:#fff} .s{background:#444;color:#eee}`;
     const box = document.createElement('div'); box.className = 't';
-    const p = document.createElement('div'); p.textContent = '📺 ' + text;
+    const p = document.createElement('div'); p.textContent = text;
     const row = document.createElement('div'); row.className = 'b';
     const close = () => host.remove();
     for (const b of buttons) {
