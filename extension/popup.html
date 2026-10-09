@@ -5,7 +5,7 @@
 <title>TabToTV</title>
 <style>
   body { font: 13px/1.4 system-ui, sans-serif; width: 226px; margin: 0; padding: 12px 12px; color: #222; }
-  h1 { font-size: 15px; margin: 0 0 8px; }
+  h1 { font-size: 13px; color: #888; margin: 8px 0 0; }
   .status { color: #555; margin: 0 0 4px; }
   .status.warn { color: #c62828; }
   button { font: inherit; width: 100%; border: 0; border-radius: 8px; padding: 9px 10px; cursor: pointer; margin: 6px 0; }
@@ -13,18 +13,21 @@
   #auto.off { background: #c62828; }
   #tabToggle { background: #1565c0; color: #fff; }
   #tabToggle:disabled { opacity: .5; cursor: default; }
-  #options { background: #eee; color: #222; }
+  #options, #closeAll { background: #eee; color: #222; }
+  #closeAll:disabled { opacity: .5; cursor: default; }
   .hint { color: #666; font-size: 12px; margin: 2px 0 8px; }
 </style>
 </head>
 <body>
-<h1>TabToTV</h1>
-<p id="display" class="status"></p>
-<p id="tabState" class="status"></p>
+<!-- Frequently used buttons on top: shortest mouse path from the toolbar icon. -->
 <button id="tabToggle" type="button"></button>
 <button id="auto" type="button"></button>
+<button id="closeAll" type="button">Alle TV-Fenster schließen</button>
+<button id="options" type="button">⚙️ Einstellungen …</button>
 <p id="autoHint" class="hint"></p>
-<button id="options" type="button">Einstellungen …</button>
+<p id="display" class="status"></p>
+<p id="tabState" class="status"></p>
+<h1>TabToTV</h1>
 <script src="settings.js"></script>
 <script src="popup.js"></script>
 </body>

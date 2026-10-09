@@ -28,6 +28,10 @@ async function render() {
   $('tabToggle').textContent = onTv ? 'Zurückholen' : 'Video dieses Tabs auf den TV';
   $('tabToggle').disabled = busy || (!target && !onTv);
   $('auto').disabled = busy;
+  // Also leftovers: TV windows without a page (e.g. after a crash), closed by the same button.
+  const tvWindows = (await chrome.tabs.query({ windowType: 'popup' }))
+    .filter(t => (t.url || t.pendingUrl) === TAB2TV_POPUP_URL && t.openerTabId == null);
+  $('closeAll').disabled = busy || (!Object.keys(state.sessions).length && !tvWindows.length);
 
   $('auto').textContent = 'Automatik: ' + (autoMode ? 'AN' : 'AUS');
   $('auto').classList.toggle('off', !autoMode);
@@ -46,7 +50,7 @@ function runAction(probe, action) {
   if (busy) return;
   busy = true;
   message = '';
-  $('auto').disabled = $('tabToggle').disabled = true;
+  $('auto').disabled = $('tabToggle').disabled = $('closeAll').disabled = true;
   probe.then(action)
     .catch(() => FAILED)
     .then(async result => {
@@ -86,6 +90,13 @@ $('auto').addEventListener('click', () => {
     const ok = await chrome.runtime.sendMessage({ type: 'setAutoMode', on: turnOn, tabId: tab?.id, probe: results || [] });
     if (!ok) return FAILED;
     return turnOn && !noVideo(results) ? 'close' : '';
+  });
+});
+
+$('closeAll').addEventListener('click', () => {
+  runAction(Promise.resolve(), async () => {
+    const ok = await chrome.runtime.sendMessage({ type: 'closeAll' });
+    return ok ? '' : FAILED;
   });
 });
 

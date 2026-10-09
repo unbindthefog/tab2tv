@@ -252,6 +252,24 @@ function closePopup(windowId) {
   if (windowId != null) chrome.windows.remove(windowId).catch(() => {});
 }
 
+// Popup button: end every output (videos return to their pages) and close every TV window,
+// including leftovers without a page.
+async function closeAllTvWindows() {
+  const removed = await updateState(state => {
+    const all = Object.entries(state.sessions);
+    state.sessions = {};
+    state.tvOwner = null;
+    return all;
+  });
+  for (const [tabId, s] of removed) {
+    sendToFrame(tabId, s, { type: 'stop' });
+    closePopup(s.popupWindowId);
+  }
+  const leftovers = await chrome.tabs.query({ windowType: 'popup' });
+  // Leftovers only (no opener): a TV window that is just being opened has one and is left alone.
+  for (const t of leftovers) if (isOrphanTvTab(t)) closePopup(t.windowId);
+}
+
 // --- Leftovers after a browser restart ---------------------------------------
 // With session restore Brave brings TV popups back as empty windows. A live TV popup always has
 // an opener tab (the page that opened it); a restored one has none.
@@ -294,6 +312,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === 'setAutoMode') {
     setAutoMode(msg.on, msg.tabId, msg.probe).then(() => sendResponse(true), () => sendResponse(false));
+    return true;
+  }
+  if (msg.type === 'closeAll') {
+    closeAllTvWindows().then(() => sendResponse(true), () => sendResponse(false));
     return true;
   }
   if (msg.type === 'toggleTab') {

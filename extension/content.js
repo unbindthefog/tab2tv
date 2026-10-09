@@ -249,6 +249,15 @@
   }
   // Called by the service worker's probe (chrome.scripting.executeScript runs in this isolated world).
   globalThis.tab2tvCandidateScore = candidateScore;
+  // Diagnostics for tools/scan-sites.mjs: every video of this frame and why automatic output
+  // would ignore it (reason null = it would be sent to the TV when started by the user).
+  globalThis.tab2tvDebugVideos = () => [...document.querySelectorAll('video')].map(v => {
+    const r = v.getBoundingClientRect();
+    return { frame: location.hostname, site: siteHostname, src: (v.currentSrc || v.src).slice(0, 80),
+      w: Math.round(r.width), h: Math.round(r.height), playing: !v.paused, muted: v.muted,
+      duration: Number.isFinite(v.duration) ? Math.round(v.duration) : String(v.duration),
+      reason: autoRejectReason(v) };
+  });
 
   chrome.runtime.onMessage.addListener(msg => {
     if (msg.type === 'start') {
