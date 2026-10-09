@@ -21,18 +21,27 @@ function tab2tvIsUsableTarget(d) {
   return !d.isPrimary && d.isEnabled !== false;
 }
 
-// Finds the chosen target among the connected displays (chrome.system.display.getInfo()).
+// Finds the chosen target among the connected displays (chrome.system.display.getInfo()) and how
+// it was found: { display, by: 'auto' | 'id' | 'name' | 'resolution' } or { display: null }.
 // macOS reports empty display names and AirPlay may assign new ids per connection, so match
-// by id first, then by label (if known), then by resolution of an external display.
+// by id first, then by label (if known), then by resolution of an external display – the latter
+// only if exactly one display has it, so a second monitor of the same size is never taken.
 // A chosen display that is not connected yields null: never fall back to another monitor.
-function tab2tvPickTarget(displays, target) {
+function tab2tvMatchTarget(displays, target) {
   const candidates = displays.filter(tab2tvIsUsableTarget);
-  if (!target) return candidates[0] || null;
-  return candidates.find(d => d.id === target.id)
-    || (target.label && candidates.find(d => d.name && d.name === target.label))
-    || candidates.find(d => !d.isInternal
-      && d.bounds.width === target.width && d.bounds.height === target.height)
-    || null;
+  if (!target) return { display: candidates[0] || null, by: 'auto' };
+  const byId = candidates.find(d => d.id === target.id);
+  if (byId) return { display: byId, by: 'id' };
+  const byName = target.label && candidates.find(d => d.name && d.name === target.label);
+  if (byName) return { display: byName, by: 'name' };
+  const sameSize = candidates.filter(d => !d.isInternal
+    && d.bounds.width === target.width && d.bounds.height === target.height);
+  if (sameSize.length === 1) return { display: sameSize[0], by: 'resolution' };
+  return { display: null };
+}
+
+function tab2tvPickTarget(displays, target) {
+  return tab2tvMatchTarget(displays, target).display;
 }
 
 function tab2tvDisplayLabel(d, label) {
@@ -49,10 +58,20 @@ function tab2tvLoadSettings() {
 
 // v2: automatic output is opt-in per website (allow-list instead of block-list) and the parallel
 // view is the default. Drop the old values once so the new defaults apply; keep everything else.
+// An explicit v1 "automatic output off" only meant "no automatic start": kept as an empty site list
+// (the automatic mode switch also controls following the active tab, which v1 always did).
 async function tab2tvMigrateSettings() {
-  const { settingsVersion = 1 } = await chrome.storage.local.get('settingsVersion');
-  if (settingsVersion < 2) await chrome.storage.local.remove(['autoEnabled', 'disabledSites', 'parallel']);
+  const { settingsVersion = 1, autoEnabled } = await chrome.storage.local.get(['settingsVersion', 'autoEnabled']);
+  if (settingsVersion < 2) {
+    if (autoEnabled === false) await chrome.storage.local.set({ autoSites: [], autoAllSites: false });
+    await chrome.storage.local.remove(['autoEnabled', 'disabledSites', 'parallel']);
+  }
   await chrome.storage.local.set({ settingsVersion: TAB2TV_SETTINGS_VERSION });
+}
+
+// A TV popup without its page (e.g. restored by Brave after a restart): TV URL but no opener tab.
+function tab2tvIsOrphanTvTab(tab) {
+  return (tab.url || tab.pendingUrl || '') === TAB2TV_POPUP_URL && tab.openerTabId == null;
 }
 
 // Scores the best video of every frame in a tab ([{ frameId, result: score }]); null if the

@@ -53,7 +53,10 @@ function selectedTarget() {
   if (v === '') return null;
   if (v === 'saved') return savedTarget;
   const d = displays.find(d => d.id === v);
-  return { id: d.id, width: d.bounds.width, height: d.bounds.height, label: labels[d.id] || d.name || '' };
+  // Still the saved display (e.g. matched by resolution under a new id): keep its known label.
+  const sameAsSaved = savedTarget && tab2tvPickTarget(displays, savedTarget)?.id === d.id;
+  return { id: d.id, width: d.bounds.width, height: d.bounds.height,
+    label: labels[d.id] || d.name || (sameAsSaved ? savedTarget.label : '') || '' };
 }
 
 async function renderShortcuts() {

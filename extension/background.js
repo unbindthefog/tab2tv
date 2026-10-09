@@ -91,16 +91,24 @@ async function findTargetDisplay() {
     chrome.system.display.getInfo(),
     chrome.storage.local.get({ targetDisplay: null }),
   ]);
-  const found = tab2tvPickTarget(displays, targetDisplay);
-  // Re-identified under a new id (e.g. AirPlay reconnect): remember it for the next exact match.
-  if (found && targetDisplay && found.id !== targetDisplay.id) {
-    await chrome.storage.local.set({ targetDisplay: { ...targetDisplay, id: found.id } });
+  const { display, by } = tab2tvMatchTarget(displays, targetDisplay);
+  // Re-identified by name under a new id (e.g. AirPlay reconnect): remember it for the next exact
+  // match. A match by resolution alone is not stored – it is redone on every lookup, so it can't
+  // permanently lock onto another monitor.
+  if (display && by === 'name' && display.id !== targetDisplay.id) {
+    await chrome.storage.local.set({ targetDisplay: { ...targetDisplay, id: display.id } });
   }
-  return found;
+  return display;
 }
 
-// Small diagnostic log of display changes, shown on the options page.
-async function logDisplays(event) {
+// Small diagnostic log of display changes, shown on the options page. Serialized: display
+// changes come in bursts, and parallel read-modify-writes would drop entries.
+let displayLogQueue = Promise.resolve();
+function logDisplays(event) {
+  displayLogQueue = displayLogQueue.then(() => appendDisplayLog(event), () => appendDisplayLog(event));
+  return displayLogQueue;
+}
+async function appendDisplayLog(event) {
   const displays = await chrome.system.display.getInfo();
   const { displayLog = [] } = await chrome.storage.local.get('displayLog');
   displayLog.push({
@@ -178,7 +186,6 @@ async function handleDisplayChange() {
   for (const [tabId, s] of lost) {
     sendToFrame(tabId, s, { type: 'displayLost' });
     closePopup(s.popupWindowId);
-    chrome.action.setBadgeText({ tabId: +tabId, text: null }).catch(() => {});
     console.debug('[TabToTV] display lost, stopped tab', tabId, 'after', Date.now() - t0, 'ms');
   }
   logDisplays('changed');
@@ -277,20 +284,17 @@ async function closeAllTvWindows() {
   }
   const leftovers = await chrome.tabs.query({ windowType: 'popup' });
   // Leftovers only (no opener): a TV window that is just being opened has one and is left alone.
-  for (const t of leftovers) if (isOrphanTvTab(t)) closePopup(t.windowId);
+  for (const t of leftovers) if (tab2tvIsOrphanTvTab(t)) closePopup(t.windowId);
 }
 
 // --- Leftovers after a browser restart ---------------------------------------
 // With session restore Brave brings TV popups back as empty windows. A live TV popup always has
 // an opener tab (the page that opened it); a restored one has none.
 
-function isOrphanTvTab(tab) {
-  return (tab.url || tab.pendingUrl || '') === TAB2TV_POPUP_URL && tab.openerTabId == null;
-}
 
 async function closeOrphanPopups(reason) {
   const tabs = await chrome.tabs.query({ windowType: 'popup' });
-  for (const tab of tabs.filter(isOrphanTvTab)) {
+  for (const tab of tabs.filter(tab2tvIsOrphanTvTab)) {
     console.debug('[TabToTV] closing leftover TV popup', tab.windowId, '(' + reason + ')');
     closePopup(tab.windowId);
   }
@@ -303,9 +307,9 @@ chrome.runtime.onStartup.addListener(() => {
 // Also on every worker start: the extension may be loaded after session restore (missing the
 // events above), and the check is a single cheap query.
 closeOrphanPopups('worker start');
-chrome.tabs.onCreated.addListener(tab => { if (isOrphanTvTab(tab)) closePopup(tab.windowId); });
+chrome.tabs.onCreated.addListener(tab => { if (tab2tvIsOrphanTvTab(tab)) closePopup(tab.windowId); });
 chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
-  if (change.url && isOrphanTvTab(tab)) closePopup(tab.windowId);
+  if (change.url && tab2tvIsOrphanTvTab(tab)) closePopup(tab.windowId);
 });
 
 // --- Messages and triggers ------------------------------------------------
@@ -413,7 +417,6 @@ chrome.windows.onRemoved.addListener(async windowId => {
   const removed = await removeSessionsWhere(s => s.popupWindowId === windowId);
   for (const [tabId, s] of removed) {
     sendToFrame(tabId, s, { type: 'popupClosed' });
-    chrome.action.setBadgeText({ tabId: +tabId, text: null }).catch(() => {});
     releaseTv(tabId);
   }
 });

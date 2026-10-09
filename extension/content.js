@@ -7,7 +7,12 @@
 (() => {
   let settings = { ...TAB2TV_DEFAULTS };
   tab2tvLoadSettings().then(s => { settings = s; });
-  chrome.storage.onChanged.addListener(() => tab2tvLoadSettings().then(s => { settings = s; }));
+  // Only settings changes (not e.g. the display log), as this runs in every frame of every tab.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && Object.keys(changes).some(k => k in TAB2TV_DEFAULTS)) {
+      tab2tvLoadSettings().then(s => { settings = s; });
+    }
+  });
 
   const isYouTube = /^www\.youtube(-nocookie)?\.com$/.test(location.hostname);
   const log = (...a) => console.debug('[TabToTV]', ...a);

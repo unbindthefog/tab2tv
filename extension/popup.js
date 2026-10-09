@@ -1,4 +1,5 @@
-// Popup of the toolbar icon: status, automatic mode switch, link to the options.
+// Popup of the toolbar icon: keys SEND (this tab to TV / back; message 'toggleTab'), CLEAR (close
+// all TV windows), AUTO (automatic mode), OPT (options); status lines below.
 const $ = id => document.getElementById(id);
 
 // ?tabId= lets tests open the popup as a normal tab for a given page tab.
@@ -36,7 +37,7 @@ async function render() {
   $('auto').disabled = busy;
   // Also leftovers: TV windows without a page (e.g. after a crash), closed by the same button.
   const tvWindows = (await chrome.tabs.query({ windowType: 'popup' }))
-    .filter(t => (t.url || t.pendingUrl) === TAB2TV_POPUP_URL && t.openerTabId == null);
+    .filter(tab2tvIsOrphanTvTab);
   const open = Object.keys(state.sessions).length + tvWindows.length;
   $('closeAll').disabled = busy || !open;
   setLamp('clearLamp', open ? String(open) : '', 'info');
