@@ -4,30 +4,42 @@
 <meta charset="utf-8">
 <title>TabToTV</title>
 <style>
-  body { font: 13px/1.4 system-ui, sans-serif; width: 226px; margin: 0; padding: 12px 12px; color: #222; }
-  h1 { font-size: 13px; color: #888; margin: 8px 0 0; }
-  .status { color: #555; margin: 0 0 4px; }
-  .status.warn { color: #c62828; }
-  button { font: inherit; width: 100%; border: 0; border-radius: 8px; padding: 9px 10px; cursor: pointer; margin: 6px 0; }
-  #auto { font-weight: 600; font-size: 14px; color: #fff; background: #2e7d32; }
-  #auto.off { background: #c62828; }
-  #tabToggle { background: #1565c0; color: #fff; }
-  #tabToggle:disabled { opacity: .5; cursor: default; }
-  #options, #closeAll { background: #eee; color: #222; }
-  #closeAll:disabled { opacity: .5; cursor: default; }
-  .hint { color: #666; font-size: 12px; margin: 2px 0 8px; }
+  /* Cockpit-panel look: dark housing, square keys, mono all-caps legends with lamp lines. */
+  :root { color-scheme: dark; --mono: ui-monospace, "SF Mono", Menlo, monospace; }
+  body { font: 11px/1.4 var(--mono); width: 230px; margin: 0; padding: 12px 10px 10px;
+    color: #9a9a9a; background: #1b1c1e; }
+  .panel { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px;
+    background: #0c0c0d; border: 1px solid #000; border-radius: 4px;
+    box-shadow: inset 0 0 0 1px #2a2b2e; }
+  .key { font: 600 13px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+    height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    color: #e6e6e6; background: linear-gradient(#26272a, #1d1e20); cursor: pointer;
+    border: 1px solid #000; border-radius: 3px; box-shadow: inset 0 1px 0 #34353a, 0 1px 0 #000; }
+  .key:hover:not(:disabled) { background: linear-gradient(#2c2d31, #222326); }
+  .key:active:not(:disabled) { box-shadow: inset 0 2px 4px #000; transform: translateY(1px); }
+  .key:disabled { cursor: default; color: #5c5d61; }
+  .lamp { font-size: 12px; min-height: 15px; letter-spacing: .1em; }
+  .lamp.on { color: #3fdc5a; text-shadow: 0 0 6px rgba(63, 220, 90, .6); }
+  .lamp.off { color: #ff4d4d; text-shadow: 0 0 6px rgba(255, 77, 77, .5); }
+  .lamp.info { color: #e8c547; text-shadow: 0 0 6px rgba(232, 197, 71, .5); }
+  .hint { margin: 10px 2px 4px; }
+  .status { margin: 2px; color: #c8c8c8; }
+  .status.warn { color: #ff4d4d; }
+  h1 { font: 600 10px var(--mono); letter-spacing: .2em; color: #55565a; margin: 10px 2px 0; }
 </style>
 </head>
 <body>
-<!-- Frequently used buttons on top: shortest mouse path from the toolbar icon. -->
-<button id="tabToggle" type="button"></button>
-<button id="auto" type="button"></button>
-<button id="closeAll" type="button">Alle TV-Fenster schließen</button>
-<button id="options" type="button">⚙️ Einstellungen …</button>
+<!-- Frequently used keys on top: shortest mouse path from the toolbar icon. -->
+<div class="panel">
+  <button class="key" id="tabToggle" type="button" title="Video dieses Tabs auf den TV / zurückholen">SEND<span class="lamp" id="sendLamp"></span></button>
+  <button class="key" id="auto" type="button" title="Automatik an/aus">AUTO<span class="lamp" id="autoLamp"></span></button>
+  <button class="key" id="closeAll" type="button" title="Alle TV-Fenster schließen">CLEAR<span class="lamp" id="clearLamp"></span></button>
+  <button class="key" id="options" type="button" title="Einstellungen">OPT<span class="lamp"></span></button>
+</div>
 <p id="autoHint" class="hint"></p>
 <p id="display" class="status"></p>
 <p id="tabState" class="status"></p>
-<h1>TabToTV</h1>
+<h1>TABTOTV</h1>
 <script src="settings.js"></script>
 <script src="popup.js"></script>
 </body>

@@ -10,6 +10,12 @@ let onTv = false;
 let busy = false;   // a button action is running
 let message = '';   // shown in the status line until the next click
 
+// Lamp line under a key legend (cockpit-panel style): text and color class on/off/info.
+function setLamp(id, text, kind) {
+  $(id).textContent = text;
+  $(id).className = 'lamp' + (text ? ' ' + kind : '');
+}
+
 async function render() {
   const [displays, s, state] = await Promise.all([
     chrome.system.display.getInfo(),
@@ -25,16 +31,17 @@ async function render() {
   $('display').classList.toggle('warn', !target);
   onTv = !!(tab && state.sessions[tab.id]);
   $('tabState').textContent = message || (onTv ? 'Dieser Tab läuft gerade auf dem TV.' : '');
-  $('tabToggle').textContent = onTv ? 'Zurückholen' : 'Video dieses Tabs auf den TV';
+  setLamp('sendLamp', onTv ? 'ON' : '', 'on');
   $('tabToggle').disabled = busy || (!target && !onTv);
   $('auto').disabled = busy;
   // Also leftovers: TV windows without a page (e.g. after a crash), closed by the same button.
   const tvWindows = (await chrome.tabs.query({ windowType: 'popup' }))
     .filter(t => (t.url || t.pendingUrl) === TAB2TV_POPUP_URL && t.openerTabId == null);
-  $('closeAll').disabled = busy || (!Object.keys(state.sessions).length && !tvWindows.length);
+  const open = Object.keys(state.sessions).length + tvWindows.length;
+  $('closeAll').disabled = busy || !open;
+  setLamp('clearLamp', open ? String(open) : '', 'info');
 
-  $('auto').textContent = 'Automatik: ' + (autoMode ? 'AN' : 'AUS');
-  $('auto').classList.toggle('off', !autoMode);
+  setLamp('autoLamp', autoMode ? 'ON' : 'OFF', autoMode ? 'on' : 'off');
   $('autoHint').textContent = autoMode
     ? 'Videos starten automatisch auf dem TV, der TV folgt dem aktiven Tab. Ausschalten: Der TV behält sein Video.'
     : 'Der TV behält sein Video und folgt keinem Tabwechsel. Einschalten holt das Video dieses Tabs auf den TV.';
