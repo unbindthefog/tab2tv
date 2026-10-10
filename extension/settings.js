@@ -76,9 +76,9 @@ function tab2tvIsOrphanTvTab(tab) {
 
 // Scores the best video of every frame in a tab ([{ frameId, result: score }]); null if the
 // page does not allow injection (browser pages, web store).
-// Opening a TV window needs a user activation in the page, which a click in the popup or a
-// shortcut does not give by itself. Scripts injected with chrome.scripting.executeScript right in
-// the click/shortcut handler run with that user gesture, though, so after this probe the chosen
+// Opening a TV window needs a user activation in the page, which a click in the popup does not
+// give by itself. Scripts injected with chrome.scripting.executeScript right in
+// the click handler run with that user gesture, though, so after this probe the chosen
 // frame may call window.open. Call it before any await in the handler.
 // Frames can't see into each other (cross-origin iframes), so each one scores its own video.
 function tab2tvProbeFrames(tabId) {

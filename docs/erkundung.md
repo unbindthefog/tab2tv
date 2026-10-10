@@ -30,7 +30,7 @@ Methode: isolierte Brave-Instanz (eigenes Profil, `--load-extension`, `--remote-
 - `captureStream()` wirft bei EME/DRM synchron eine Exception (erkennbar), bei Cross-Origin-Medien `SecurityError`.
 - Widevine ist in Brave standardmäßig aus (Opt-in-Prompt). DRM in DocPiP: unbekannt.
 - YouTube-Untertitel sind DOM-Overlays, keine TextTracks → DOM-Spiegelung per MutationObserver ins PiP.
-- `chrome.commands`: global nur Ctrl+Shift+[0-9]; ob ein Command Nutzeraktivierung für die Seite liefert: unbestätigt.
+- `chrome.commands`: global nur Ctrl+Shift+[0-9]; ob ein Command Nutzeraktivierung für die Seite liefert: unbestätigt. (Tastenkürzel inzwischen entfernt, 2026-10-10.)
 - Vorbild: [pip-twin](https://github.com/timoncool/pip-twin) (Popup + `captureStream`, re-parenting).
 
 ## Richtungswechsel nach Sichtprüfung: Document PiP → Popup + captureStream
@@ -67,13 +67,13 @@ Stattdessen (Idee C als Hauptweg):
 | Vimeo-Embed | ❓ Vimeo spielt in der Testinstanz grundsätzlich nicht („Videos können nicht abgespielt werden“, auch ohne Erweiterung/als eigener Tab) → im echten Brave testen |
 | Wettlauf beim Speichern der Sitzungen | ⚠️→✅ Read-modify-write auf `storage.session` überschrieb sich (Übernahme zwischen Frames); jetzt Warteschlange, Entscheidungen auf aktuellem Stand |
 | Mehrere TV-Fenster begrenzen | ✅ TV-Besitzer + höchstens ein Hintergrund-Fenster; dieses schließt nach `backgroundCloseSec` (Standard 30 s, Timer im Content-Script, da der Service Worker schlafen kann); drittes Fenster schließt sofort; gibt der Besitzer zurück, schließt auch das Hintergrund-Fenster. `tools/test-multitab.mjs`: 8/8 |
-| Nutzeraktivierung über Symbol/Shortcut | ✅ (per CDP mit `userGesture` simuliert) `chrome.scripting.executeScript` direkt im Klick-/Shortcut-Handler läuft mit der Nutzergeste → der Frame hat danach transiente Aktivierung, `window.open` klappt ohne Hinweis-Button. Echter Klick aufs Symbol: vom Nutzer zu bestätigen |
+| Nutzeraktivierung über Symbol/Shortcut (Shortcut inzwischen entfernt) | ✅ (per CDP mit `userGesture` simuliert) `chrome.scripting.executeScript` direkt im Klick-/Shortcut-Handler läuft mit der Nutzergeste → der Frame hat danach transiente Aktivierung, `window.open` klappt ohne Hinweis-Button. Echter Klick aufs Symbol: vom Nutzer zu bestätigen |
 | Automatik-Schalter (Symbol) | ✅ `autoMode` aus: kein Auto-Start, kein Folgen bei Tabwechsel/Play; an: Video des aktuellen Tabs sofort auf den TV. `tools/test-automode.mjs` 7/7. Dabei gefunden: erneutes Play im sichtbaren Tab hat das Hintergrund-Fenster verdrängt → behoben |
 | Testumgebung | Ein falscher `--load-extension`-Pfad lässt Brave beim Start an einem modalen Fehlerdialog hängen (kein CDP-Port). Diagnose: `TAB2TV_LOG=1` |
 
 ## Offene Punkte
 
-1. **Echter Tastendruck ⌥⇧T / Klick aufs Symbol** mit dem `executeScript`-Weg bestätigen (nur mit echter Eingabe testbar). Falls nein: Hinweis-Button bleibt der Weg.
+1. **Echter Klick auf SEND/AUTO im Menü** mit dem `executeScript`-Weg bestätigen (nur mit echter Eingabe testbar). Falls nein: Hinweis-Button bleibt der Weg. (Das Tastenkürzel ⌥⇧T wurde am 2026-10-10 entfernt.)
 2. Langzeit > 5 min mit Tab im Hintergrund.
 3. DRM (Widevine in Brave erst aktivieren) → erwartete Meldung; evtl. DocPiP-Fallback.
 4. Vimeo-Embed (zurückgestellt); Videos ohne CORS (captureStream nicht möglich) – Rückfallebene?

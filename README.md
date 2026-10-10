@@ -27,14 +27,14 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken und offene T
 
 - **Automatik:** Auf den Websites in der Automatik-Liste (Standard: nur `youtube.com`) erscheint ein per Klick gestartetes Video nach ca. 1 s im Vollbild auf dem TV. Maßgeblich ist die Website, auf der du bist – ein YouTube-Player eingebettet auf einer anderen Seite startet nur automatisch, wenn diese Seite in der Liste steht. Standardmäßig läuft das Video zusätzlich im Player der Seite weiter (Paralleldarstellung, Ton nur einmal); alternativ ersetzt ein Platzhalter mit „Zurückholen“-Button das Bild.
 - **Menü am Erweiterungssymbol** (schlichtes Tastenfeld, hell/dunkel nach System, Statuszeile unter jeder Taste):
-  - **SEND:** Video dieses Tabs auf den TV; leuchtet „ON“, solange der Tab auf dem TV läuft – erneut drücken holt es zurück (wie **⌥⇧T**).
+  - **SEND:** Video dieses Tabs auf den TV; leuchtet „ON“, solange der Tab auf dem TV läuft – erneut drücken holt es zurück.
   - **AUTO:** Automatik „ON“ (grün) / „OFF“ (rot, Symbol rot mit „AUS“). Aus: Der TV behält sein Video, folgt keinem Tabwechsel und startet nichts automatisch – so kannst du ein Video weiterschauen und in anderen Tabs stöbern. Wieder an: holt sofort das Video des aktuellen Tabs auf den TV.
   - **CLEAR:** schließt alle TV-Fenster (Anzeige: Anzahl offener TV-Fenster); die Videos kehren in ihre Seiten zurück.
   - **OPT:** Einstellungen.
 - Klappt das Öffnen des TV-Fensters ausnahmsweise nicht, erscheint unten rechts auf der Seite ein Hinweis mit Button „Auf TV abspielen“.
 - **Mehrere Tabs:** Der TV zeigt das Video des Tabs, in dem zuletzt Play gedrückt bzw. zu dem gewechselt wurde. Das vorherige TV-Fenster bleibt 30 s im Hintergrund (Zurückwechseln geht sofort) und schließt sich dann; das Video kehrt in seine Seite zurück. Es gibt höchstens zwei TV-Fenster. Die Wartezeit ist in den Optionen einstellbar.
-- **Zurückholen:** Button im Platzhalter, im Menü oder ⌥⇧T. Das Video läuft ohne Unterbrechung in der Seite weiter.
-- **Einstellungen:** im Menü „OPT“ (oder Rechtsklick auf das Symbol → Optionen): Zielbildschirm, Automatik (Website-Liste oder alle Websites), Paralleldarstellung, Hintergrund-Fenster, Verhalten bei Videoende, Tastenkombination. Unter „Erweitert“: Schwellwerte der Automatik (Mindestdauer/-breite), Bildschirmnamen, Diagnose.
+- **Zurückholen:** Button im Platzhalter oder SEND im Menü. Das Video läuft ohne Unterbrechung in der Seite weiter.
+- **Einstellungen:** im Menü „OPT“ (oder Rechtsklick auf das Symbol → Optionen): Zielbildschirm, Automatik (Website-Liste oder alle Websites), Paralleldarstellung, Hintergrund-Fenster, Verhalten bei Videoende. Unter „Erweitert“: Schwellwerte der Automatik (Mindestdauer/-breite), Bildschirmnamen, Diagnose.
 - **Zielbildschirm:** Standard ist der erste zusätzliche Bildschirm. Ein ausdrücklich gewählter Bildschirm wird nach einer neuen AirPlay-Verbindung wiedererkannt (über Kennung, Name oder Auflösung). Ist er nicht verbunden, gibt die Erweiterung nichts aus. „Bildschirmnamen anzeigen“ (unter „Erweitert“) fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ erscheinen.
 - **TV getrennt:** Wird der Zielbildschirm getrennt (oder auf Synchronisierung umgestellt), kehrt das Video sofort pausiert in die Seite zurück.
 

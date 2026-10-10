@@ -8,12 +8,6 @@
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "TabToTV", "default_popup": "popup.html" },
   "options_page": "options.html",
-  "commands": {
-    "toggle-tv": {
-      "suggested_key": { "default": "Alt+Shift+T" },
-      "description": "Video auf TV ausgeben / zurückholen"
-    }
-  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

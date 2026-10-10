@@ -358,8 +358,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-// --- Popup (toolbar icon) and shortcut -----------------------------------------
-// See tab2tvProbeFrames(): the probe must be injected right in the user's click/shortcut handler,
+// --- Popup (toolbar icon) --------------------------------------------------------
+// See tab2tvProbeFrames(): the probe must be injected right in the user's click handler,
 // so that the page gets the user activation needed to open the TV window.
 
 // Starts the best-scored video of the tab. False if there is none or the frame can't be reached
@@ -385,14 +385,7 @@ async function setAutoMode(on, tabId, probeResults) {
   else await startBestVideo(tabId, probeResults || []);
 }
 
-// Shortcut: send the video of the current tab to the TV, or return it.
-chrome.commands.onCommand.addListener((command, tab) => {
-  if (command === 'toggle-tv' && tab?.id != null) {
-    toggleTabOutput(tab.id, tab2tvProbeFrames(tab.id))
-      .catch(e => console.debug('[TabToTV] shortcut failed:', e.message));
-  }
-});
-// Shortcut and popup button. The probe must already be running (started within the user's input).
+// Popup SEND key. The probe must already be running (started within the user's click).
 async function toggleTabOutput(tabId, probe) {
   const session = (await getSessions())[tabId];
   if (!session) return startBestVideo(tabId, probe);

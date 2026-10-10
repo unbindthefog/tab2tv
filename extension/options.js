@@ -59,20 +59,6 @@ function selectedTarget() {
     label: labels[d.id] || d.name || (sameAsSaved ? savedTarget.label : '') || '' };
 }
 
-async function renderShortcuts() {
-  // _execute_action is the implicit "click the toolbar icon" command; only show it if assigned.
-  const commands = (await chrome.commands.getAll())
-    .filter(c => c.name !== '_execute_action' || c.shortcut);
-  $('shortcuts').replaceChildren(...commands.map(c => {
-    const row = document.createElement('div');
-    const key = document.createElement('kbd');
-    key.textContent = c.shortcut || 'nicht festgelegt';
-    const label = c.name === '_execute_action' ? 'Wie Klick auf das Erweiterungssymbol' : c.description;
-    row.append(key, ' ', label);
-    return row;
-  }));
-}
-
 function syncAutoFields() {
   $('autoSites').disabled = $('autoAllSites').checked;
 }
@@ -92,10 +78,6 @@ tab2tvLoadSettings().then(async s => {
   renderDisplays();
 });
 
-renderShortcuts();
-// Shortcuts may be changed on the browser's shortcut page while this page is open.
-addEventListener('focus', renderShortcuts);
-$('editShortcuts').addEventListener('click', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }));
 $('autoAllSites').addEventListener('change', syncAutoFields);
 
 chrome.system.display.onDisplayChanged.addListener(() => setTimeout(renderDisplays, 300));
