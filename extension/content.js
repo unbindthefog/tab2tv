@@ -5,6 +5,13 @@
 // Embedded players (cross-origin iframes) are handled by the instance inside that iframe:
 // there the video is same-origin, and the popup is opened from the iframe's origin.
 (() => {
+  // Still connected to the extension? After an extension reload/update an old instance stays in
+  // the page but is cut off (chrome.runtime.id becomes undefined); it then stays quiet.
+  const alive = () => !!chrome.runtime?.id;
+  // Asked by the service worker before it injects the scripts into already open tabs after an
+  // install/update (see injectIntoOpenTabs in background.js): only a live instance counts.
+  globalThis.tab2tvContentAlive = alive;
+
   let settings = { ...TAB2TV_DEFAULTS };
   tab2tvLoadSettings().then(s => { settings = s; });
   // Only settings changes (not e.g. the display log), as this runs in every frame of every tab.
@@ -78,7 +85,7 @@
   // Media events don't bubble, but they can be captured at document level.
   document.addEventListener('play', async e => {
     const v = e.target;
-    if (!(v instanceof HTMLVideoElement)) return;
+    if (!(v instanceof HTMLVideoElement) || !alive()) return;
     if (session) {
       // Another big video started while on TV (e.g. site swapped elements): follow it.
       if (v !== session.video && !autoRejectReason(v) && videoArea(v) >= videoArea(session.video)) rebind(v);
@@ -237,7 +244,7 @@
     restorePageMode(s);
     if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'auto' }));
     if (!s.popup.closed) s.popup.close();
-    chrome.runtime.sendMessage({ type: 'stopped' }).catch(() => {});
+    if (alive()) chrome.runtime.sendMessage({ type: 'stopped' }).catch(() => {});
   }
 
   addEventListener('pagehide', () => stopTv({ reason: 'page hidden' }));

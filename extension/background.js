@@ -197,7 +197,33 @@ chrome.runtime.onInstalled.addListener(async () => {
   await tab2tvMigrateSettings();
   refreshBadge();
   logDisplays('installed');
+  injectIntoOpenTabs();
 });
+
+// Content scripts only run in pages loaded after the extension was installed or updated. Inject
+// them into the frames of already open tabs, so the popup's SEND finds their videos without a
+// page reload. A frame counts as served only if a live instance answers (an old instance cut off
+// by the update does not); settings.js declares top-level constants, so served frames are skipped.
+// Script lists come from the manifest; the MAIN-world adapter goes into YouTube frames only.
+async function injectIntoOpenTabs() {
+  const [isolated, main] = chrome.runtime.getManifest().content_scripts;
+  const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+  await Promise.allSettled(tabs.map(async tab => {
+    const probe = await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      func: () => ({ alive: !!globalThis.tab2tvContentAlive?.(),
+        youtube: /^https:\/\/www\.youtube(-nocookie)?\.com\//.test(location.href) }),
+    });
+    const missing = probe.filter(r => !r.result.alive);
+    if (!missing.length) return;
+    await chrome.scripting.executeScript({ target: { tabId: tab.id, frameIds: missing.map(r => r.frameId) }, files: isolated.js });
+    const youtubeFrames = missing.filter(r => r.result.youtube).map(r => r.frameId);
+    if (youtubeFrames.length) {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id, frameIds: youtubeFrames }, files: main.js, world: 'MAIN' });
+    }
+  }));
+}
+
 chrome.storage.onChanged.addListener(changes => {
   // changes.sessions (storage.session): any session started or ended, whichever code path did it.
   if (changes.targetDisplay || changes.autoMode || changes.sessions) refreshBadge();
