@@ -8,6 +8,22 @@ ROOT=${0:A:h:h}
 PROFILE=${TAB2TV_PROFILE:-$HOME/.cache/tab2tv-test-profile}
 # Start clean: no restored tabs/popups from earlier test runs.
 [[ -z $TAB2TV_KEEP_SESSION ]] && rm -rf "$PROFILE/Default/Sessions" "$PROFILE/Default/Current Session" "$PROFILE/Default/Current Tabs"
+# Hide the toolbar in fullscreen (Brave: View → "Always show toolbar in full screen"), otherwise a
+# thin address bar stays visible on the TV. Set before every start: Brave may drop or reset it.
+mkdir -p "$PROFILE/Default"
+python3 - "$PROFILE/Default/Preferences" <<'EOF'
+import json, os, sys
+p = sys.argv[1]
+try:
+    with open(p) as f:
+        d = json.load(f)
+except (OSError, ValueError):
+    d = {}   # missing or broken (test profile): Brave fills in the rest
+d.setdefault('browser', {})['show_fullscreen_toolbar'] = False
+with open(p + '.tmp', 'w') as f:
+    json.dump(d, f)
+os.replace(p + '.tmp', p)   # atomic: an interrupted write can't truncate Preferences
+EOF
 if [[ -n $TAB2TV_NO_EXT ]]; then
   EXT_ARGS=(--disable-extensions)
 else
