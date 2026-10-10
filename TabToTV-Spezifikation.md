@@ -26,7 +26,7 @@ Die Erweiterung soll sich anfühlen, als wäre der TV einfach der Ort, an dem Vi
 **Leitlinien**
 
 - Unaufdringlich: Die Erweiterung greift nur ein, wenn es eindeutig gewünscht ist. Vorschauvideos, Werbebanner oder Hintergrundvideos lösen nichts aus.
-- Vorhersehbar: Der Nutzer weiß jederzeit, ob ein Video gerade auf dem TV läuft, und kann es mit einem Klick oder einer Tastenkombination zurückholen.
+- Vorhersehbar: Der Nutzer weiß jederzeit, ob ein Video gerade auf dem TV läuft, und kann es mit einem Klick zurückholen.
 - Folgenlos: Nach dem Beenden ist die Seite exakt so wie vorher.
 - Ohne zweiten Bildschirm verhält sich Brave völlig normal.
 
@@ -41,7 +41,7 @@ Die Erweiterung soll sich anfühlen, als wäre der TV einfach der Ort, an dem Vi
 **Auslösung**
 
 - Automatik: Ein relevantes Video wird beim Start auf den TV ausgegeben, sofern der Zielbildschirm verbunden ist.
-- Manuell: per Tastenkombination und über das Erweiterungssymbol, auch wenn die Automatik aus ist.
+- Manuell: über das Erweiterungssymbol, auch wenn die Automatik aus ist.
 - Automatik global und pro Website ein- und ausschaltbar.
 - Keine Auslösung bei stummgeschalteten Autoplay-Videos, kleinen Vorschauvideos, sehr kurzen Clips oder Werbung, soweit erkennbar. Schwellwerte einstellbar.
 - Bei mehreren Videos auf einer Seite wird das Hauptvideo gewählt, im Zweifel das, mit dem der Nutzer interagiert hat.
@@ -68,7 +68,7 @@ Die Erweiterung soll sich anfühlen, als wäre der TV einfach der Ort, an dem Vi
 
 **Beenden und Rückholen**
 
-- Zurückholen per Tastenkombination, Button am Player (im Platzhalter bzw. im Hinweis bei Paralleldarstellung) oder Erweiterungssymbol. Das Video läuft dann ohne Unterbrechung im Player der Seite weiter.
+- Zurückholen per Button am Player (im Platzhalter bzw. im Hinweis bei Paralleldarstellung) oder Erweiterungssymbol. Das Video läuft dann ohne Unterbrechung im Player der Seite weiter.
 - Bei Videoende: Verhalten einstellbar (auf dem TV stehen lassen, zurückholen, TV schwarz).
 - Wird der Zielbildschirm getrennt: Video sofort zurück in die Seite, pausiert.
 - Wird der Tab geschlossen oder verlässt er die Website: Ausgabe auf dem TV endet sauber.
@@ -76,7 +76,7 @@ Die Erweiterung soll sich anfühlen, als wäre der TV einfach der Ort, an dem Vi
 **Einstellungen**
 
 - Auswahl des Zielbildschirms. Die Wahl soll eine erneute AirPlay-Verbindung überdauern.
-- Automatik, Website-Liste, Schwellwerte, Verhalten bei Videoende, Tastenkombinationen.
+- Automatik, Website-Liste, Schwellwerte, Verhalten bei Videoende.
 
 ## Rahmenbedingungen
 
@@ -121,7 +121,7 @@ Eine Kombination ist denkbar, etwa Idee A als Standard und Idee B als Fallback f
 | Eingebetteter Player auf fremder Seite (z. B. Vimeo) | Funktioniert wie YouTube oder zeigt klar an, dass es nicht geht |
 | DRM-Inhalt (Mediathek, Streamingdienst) | Funktioniert oder zeigt klar an, dass es nicht geht |
 | Stummes Autoplay-Video, z. B. auf einer Nachrichtenseite | Keine Ausgabe auf dem TV |
-| Video per Tastenkombination zurückholen | Video läuft ohne Unterbrechung im Player der Seite weiter |
+| Video über das Erweiterungssymbol zurückholen | Video läuft ohne Unterbrechung im Player der Seite weiter |
 | AirPlay-Verbindung während der Wiedergabe trennen | Video pausiert zurück in der Seite, keine Fensterreste |
 | Kein zweiter Bildschirm verbunden | Keinerlei Eingriff |
 
