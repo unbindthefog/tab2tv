@@ -1,5 +1,6 @@
 // Popup of the toolbar icon: keys SEND (this tab to TV / back; message 'toggleTab'), CLEAR (close
-// all TV windows), AUTO (automatic mode), OPT (options); status lines below.
+// all TV windows), AUTO (automatic mode), OPT (options). State is shown only in the keys' lamp
+// lines; problems with SEND appear in SEND's own lamp, in red.
 const $ = id => document.getElementById(id);
 
 // ?tabId= lets tests open the popup as a normal tab for a given page tab.
@@ -9,7 +10,7 @@ let tab = null;
 let autoMode = true;
 let onTv = false;
 let busy = false;   // a button action is running
-let message = '';   // shown in the status line until the next click
+let message = '';   // short problem code for SEND's lamp (e.g. NO VIDEO), until the next click
 
 // Lamp line under a key legend (cockpit-panel style): text and color class on/off/info.
 function setLamp(id, text, kind) {
@@ -26,13 +27,11 @@ async function render() {
   autoMode = s.autoMode;
 
   const target = tab2tvPickTarget(displays, s.targetDisplay);
-  $('display').textContent = target
-    ? 'Zielbildschirm: ' + tab2tvDisplayLabel(target, s.targetDisplay?.label)
-    : 'Kein Zielbildschirm verbunden';
-  $('display').classList.toggle('warn', !target);
   onTv = !!(tab && state.sessions[tab.id]);
-  $('tabState').textContent = message || (onTv ? 'Dieser Tab läuft gerade auf dem TV.' : '');
-  setLamp('sendLamp', onTv ? 'ON' : '', 'on');
+  // SEND's lamp: a problem from the last click, else no TV connected, else on TV.
+  if (message) setLamp('sendLamp', message, 'off');
+  else if (!target && !onTv) setLamp('sendLamp', 'NO TV', 'off');
+  else setLamp('sendLamp', onTv ? 'ON' : '', 'on');
   $('tabToggle').disabled = busy || (!target && !onTv);
   $('auto').disabled = busy;
   // Also leftovers: TV windows without a page (e.g. after a crash), closed by the same button.
@@ -43,16 +42,13 @@ async function render() {
   setLamp('clearLamp', open ? String(open) : '', 'info');
 
   setLamp('autoLamp', autoMode ? 'ON' : 'OFF', autoMode ? 'on' : 'off');
-  $('autoHint').textContent = autoMode
-    ? 'Videos starten automatisch auf dem TV, der TV folgt dem aktiven Tab. Ausschalten: Der TV behält sein Video.'
-    : 'Der TV behält sein Video und folgt keinem Tabwechsel. Einschalten holt das Video dieses Tabs auf den TV.';
 }
 
-const FAILED = 'Das hat nicht geklappt – bitte noch einmal versuchen.';
+const FAILED = 'ERROR';
 
 // Runs a button action: buttons disabled meanwhile, then re-rendered (render() alone decides
-// which buttons are enabled), errors shown in the status line. The action returns a message to
-// show, or 'close' to close the popup.
+// which buttons are enabled), problems shown in SEND's lamp. The action returns a short code
+// to show, or 'close' to close the popup.
 // `probe` must already be running: it was started synchronously within the click.
 function runAction(probe, action) {
   if (busy) return;
@@ -79,8 +75,8 @@ $('tabToggle').addEventListener('click', () => {
   // Starting: probe right within the click (user activation for the TV window, see
   // tab2tvProbeFrames). Returning needs no probe.
   runAction(wasOnTv ? Promise.resolve([]) : tab2tvProbeFrames(tab.id), async results => {
-    if (unsupported(results)) return 'Auf dieser Seite nicht möglich.';
-    if (!wasOnTv && noVideo(results)) return 'Kein Video in diesem Tab gefunden.';
+    if (unsupported(results)) return 'N/A';          // e.g. a browser page
+    if (!wasOnTv && noVideo(results)) return 'NO VIDEO';
     const ok = await chrome.runtime.sendMessage({ type: 'toggleTab', tabId: tab.id, probe: results });
     return ok ? 'close' : FAILED;
   });
