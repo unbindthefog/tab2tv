@@ -1,4 +1,4 @@
-# TabToTV (Prototyp)
+# TabToTV
 
 Brave-Erweiterung, die ein im Browser laufendes Video im Vollbild auf einem zweiten Bildschirm (z. B. TV per AirPlay) ausgibt. Die Webseite bleibt auf dem Hauptbildschirm normal bedienbar, der Player der Seite steuert das Bild auf dem TV.
 
@@ -38,7 +38,7 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken und offene T
 - **Zielbildschirm:** Standard ist der erste zusätzliche Bildschirm. Ein ausdrücklich gewählter Bildschirm wird nach einer neuen AirPlay-Verbindung wiedererkannt (über Kennung, Name oder Auflösung). Ist er nicht verbunden, gibt die Erweiterung nichts aus. „Bildschirmnamen anzeigen“ (unter „Erweitert“) fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ erscheinen.
 - **TV getrennt:** Wird der Zielbildschirm getrennt (oder auf Synchronisierung umgestellt), kehrt das Video sofort pausiert in die Seite zurück.
 
-## Bekannte Grenzen (Prototyp)
+## Bekannte Grenzen
 
 - Kopiergeschützte Videos (DRM, z. B. Streamingdienste) können nicht ausgegeben werden; die Erweiterung zeigt das an.
 - Eingebettete Player (iframes, z. B. YouTube-Embeds auf fremden Seiten) werden unterstützt, sofern das Video im iframe per `captureStream()` abgreifbar ist. Videos von fremden Servern ohne CORS gehen noch nicht.

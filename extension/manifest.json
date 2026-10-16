@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "TabToTV (Prototyp)",
+  "name": "TabToTV",
   "version": "0.1.0",
   "description": "Gibt das Video eines Tabs im Vollbild auf dem zweiten Bildschirm aus.",
   "permissions": ["system.display", "storage", "tabs", "scripting"],
