@@ -211,16 +211,17 @@ async function injectIntoOpenTabs() {
   await Promise.allSettled(tabs.map(async tab => {
     const probe = await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
-      func: () => ({ alive: !!globalThis.tab2tvContentAlive?.(),
+      func: () => ({ alive: !!globalThis.tab2tvContentAlive?.(), web: /^https?:$/.test(location.protocol),
         youtube: /^https:\/\/www\.youtube(-nocookie)?\.com\//.test(location.href) }),
     });
-    const missing = probe.filter(r => !r.result.alive);
-    if (!missing.length) return;
-    await chrome.scripting.executeScript({ target: { tabId: tab.id, frameIds: missing.map(r => r.frameId) }, files: isolated.js });
-    const youtubeFrames = missing.filter(r => r.result.youtube).map(r => r.frameId);
-    if (youtubeFrames.length) {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id, frameIds: youtubeFrames }, files: main.js, world: 'MAIN' });
-    }
+    // Like the manifest: web frames only (not about:blank/srcdoc). One frame at a time, so a frame
+    // that navigates away meanwhile doesn't make the others fail.
+    const missing = probe.filter(r => r.result.web && !r.result.alive);
+    await Promise.allSettled(missing.map(async r => {
+      const target = { tabId: tab.id, frameIds: [r.frameId] };
+      await chrome.scripting.executeScript({ target, files: isolated.js });
+      if (r.result.youtube) await chrome.scripting.executeScript({ target, files: main.js, world: 'MAIN' });
+    }));
   }));
 }
 
@@ -317,7 +318,6 @@ async function closeAllTvWindows() {
 // With session restore Brave brings TV popups back as empty windows. A live TV popup always has
 // an opener tab (the page that opened it); a restored one has none.
 
-
 async function closeOrphanPopups(reason) {
   const tabs = await chrome.tabs.query({ windowType: 'popup' });
   for (const tab of tabs.filter(tab2tvIsOrphanTvTab)) {
@@ -389,7 +389,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // so that the page gets the user activation needed to open the TV window.
 
 // Starts the best-scored video of the tab. False if there is none or the frame can't be reached
-// (e.g. a tab opened before the extension was reloaded has no content script).
+// (e.g. it navigated away meanwhile).
 async function startBestVideo(tabId, probe) {
   const best = ((await probe) || []).filter(r => r.result > 0).sort((a, b) => b.result - a.result)[0];
   if (!best) return false;

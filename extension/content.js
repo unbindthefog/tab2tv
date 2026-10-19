@@ -124,7 +124,7 @@
   }
 
   async function startTv(video) {
-    if (session || !video) return;
+    if (session || !video || !alive()) return;   // e.g. a hint button left from before an update
     // Without user activation Brave opens window.open(..., 'popup') as a plain tab instead of a
     // popup window, so ask for a click first (the click itself provides the activation).
     if (!navigator.userActivation.isActive) {
@@ -152,7 +152,12 @@
     if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'max' }));
 
     popup.addEventListener('pagehide', () => stopTv({ reason: 'popup closed' }));
-    const watch = setInterval(() => { if (popup.closed) stopTv({ reason: 'popup closed' }); }, 1000);
+    // Also ends the output if this instance was cut off by an extension update: nothing else could
+    // manage its TV window any more (the new instance and the service worker don't know it).
+    const watch = setInterval(() => {
+      if (popup.closed) stopTv({ reason: 'popup closed' });
+      else if (!alive()) stopTv({ reason: 'extension updated' });
+    }, 1000);
     session.cleanups.push(() => clearInterval(watch));
 
     const t0 = performance.now();
@@ -237,14 +242,18 @@
     log('stop:', reason);
     const s = session;
     session = null;
-    clearTimeout(s.backgroundTimer);
-    for (const fn of s.cleanups) fn();
-    s.captions?.stop();
-    if (pause) s.video.pause();
-    restorePageMode(s);
-    if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'auto' }));
+    // TV window first: it must close even if a later cleanup step throws (nothing else would close it).
     if (!s.popup.closed) s.popup.close();
-    if (alive()) chrome.runtime.sendMessage({ type: 'stopped' }).catch(() => {});
+    clearTimeout(s.backgroundTimer);
+    try {
+      for (const fn of s.cleanups) fn();
+      s.captions?.stop();
+      if (pause) s.video.pause();
+      restorePageMode(s);
+      if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'auto' }));
+    } finally {
+      if (alive()) chrome.runtime.sendMessage({ type: 'stopped' }).catch(() => {});
+    }
   }
 
   addEventListener('pagehide', () => stopTv({ reason: 'page hidden' }));

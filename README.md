@@ -9,7 +9,7 @@ Brave-Erweiterung, die ein im Browser laufendes Video im Vollbild auf einem zwei
 3. **Entpackte Erweiterung laden** → den Ordner `extension/` dieses Projekts wählen.
 4. Optional: Erweiterungssymbol an die Symbolleiste anheften (Puzzle-Symbol → Pin).
 
-Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken und offene Tabs neu laden.
+Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken. Offene Tabs müssen nicht neu geladen werden, die Erweiterung spielt ihre Skripte selbst nach.
 
 ## Nötige Einstellungen
 

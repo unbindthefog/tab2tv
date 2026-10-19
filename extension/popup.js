@@ -1,6 +1,6 @@
 // Popup of the toolbar icon: keys SEND (this tab to TV / back; message 'toggleTab'), CLEAR (close
 // all TV windows), AUTO (automatic mode), OPT (options). State is shown only in the keys' lamp
-// lines; problems with SEND appear in SEND's own lamp, in red.
+// lines; a problem appears in red in the lamp of the key that was pressed.
 const $ = id => document.getElementById(id);
 
 // ?tabId= lets tests open the popup as a normal tab for a given page tab.
@@ -10,7 +10,7 @@ let tab = null;
 let autoMode = true;
 let onTv = false;
 let busy = false;   // a button action is running
-let message = '';   // short problem code for SEND's lamp (e.g. NO VIDEO), until the next click
+let problem = null; // { key, code }: short code (e.g. NO VIDEO) under the key that failed, until the next click
 
 // Lamp line under a key legend (cockpit-panel style): text and color class on/off/info.
 function setLamp(id, text, kind) {
@@ -29,7 +29,7 @@ async function render() {
   const target = tab2tvPickTarget(displays, s.targetDisplay);
   onTv = !!(tab && state.sessions[tab.id]);
   // SEND's lamp: a problem from the last click, else no TV connected, else on TV.
-  if (message) setLamp('sendLamp', message, 'off');
+  if (problem?.key === 'tabToggle') setLamp('sendLamp', problem.code, 'off');
   else if (!target && !onTv) setLamp('sendLamp', 'NO TV', 'off');
   else setLamp('sendLamp', onTv ? 'ON' : '', 'on');
   $('tabToggle').disabled = busy || (!target && !onTv);
@@ -39,28 +39,30 @@ async function render() {
     .filter(tab2tvIsOrphanTvTab);
   const open = Object.keys(state.sessions).length + tvWindows.length;
   $('closeAll').disabled = busy || !open;
-  setLamp('clearLamp', open ? String(open) : '', 'info');
+  if (problem?.key === 'closeAll') setLamp('clearLamp', problem.code, 'off');
+  else setLamp('clearLamp', open ? String(open) : '', 'info');
 
-  setLamp('autoLamp', autoMode ? 'ON' : 'OFF', autoMode ? 'on' : 'off');
+  if (problem?.key === 'auto') setLamp('autoLamp', problem.code, 'off');
+  else setLamp('autoLamp', autoMode ? 'ON' : 'OFF', autoMode ? 'on' : 'off');
 }
 
 const FAILED = 'ERROR';
 
 // Runs a button action: buttons disabled meanwhile, then re-rendered (render() alone decides
-// which buttons are enabled), problems shown in SEND's lamp. The action returns a short code
-// to show, or 'close' to close the popup.
+// which buttons are enabled), problems shown in the lamp of the pressed key. The action returns
+// a short code to show, or 'close' to close the popup.
 // `probe` must already be running: it was started synchronously within the click.
-function runAction(probe, action) {
+function runAction(key, probe, action) {
   if (busy) return;
   busy = true;
-  message = '';
+  problem = null;
   $('auto').disabled = $('tabToggle').disabled = $('closeAll').disabled = true;
   probe.then(action)
     .catch(() => FAILED)
     .then(async result => {
       busy = false;
       if (result === 'close' && !testTabId) return window.close();
-      message = result === 'close' ? '' : result || '';
+      problem = result && result !== 'close' ? { key, code: result } : null;
       await render();
     });
 }
@@ -74,7 +76,7 @@ $('tabToggle').addEventListener('click', () => {
   const wasOnTv = onTv;
   // Starting: probe right within the click (user activation for the TV window, see
   // tab2tvProbeFrames). Returning needs no probe.
-  runAction(wasOnTv ? Promise.resolve([]) : tab2tvProbeFrames(tab.id), async results => {
+  runAction('tabToggle', wasOnTv ? Promise.resolve([]) : tab2tvProbeFrames(tab.id), async results => {
     if (unsupported(results)) return 'N/A';          // e.g. a browser page
     if (!wasOnTv && noVideo(results)) return 'NO VIDEO';
     const ok = await chrome.runtime.sendMessage({ type: 'toggleTab', tabId: tab.id, probe: results });
@@ -90,7 +92,7 @@ $('auto').addEventListener('click', () => {
   const turnOn = !autoMode;
   // Turning on starts this tab's video: probe right within the click, so the page gets the user
   // activation for opening the TV window (see tab2tvProbeFrames). No await before this call.
-  runAction(turnOn && tab ? tab2tvProbeFrames(tab.id) : Promise.resolve([]), async results => {
+  runAction('auto', turnOn && tab ? tab2tvProbeFrames(tab.id) : Promise.resolve([]), async results => {
     const ok = await chrome.runtime.sendMessage({ type: 'setAutoMode', on: turnOn, tabId: tab?.id, probe: results || [] });
     if (!ok) return FAILED;
     return turnOn && !noVideo(results) ? 'close' : '';
@@ -98,7 +100,7 @@ $('auto').addEventListener('click', () => {
 });
 
 $('closeAll').addEventListener('click', () => {
-  runAction(Promise.resolve(), async () => {
+  runAction('closeAll', Promise.resolve(), async () => {
     const ok = await chrome.runtime.sendMessage({ type: 'closeAll' });
     return ok ? '' : FAILED;
   });
