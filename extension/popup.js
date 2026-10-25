@@ -117,6 +117,8 @@ $('options').addEventListener('click', () => {
   render();
 })();
 
-// Footer line, as in Jan's other projects: "dev · v0.36 · 1a2b3c4" (empty without version.js).
+// Footer line, as in Jan's other projects: "dev · v0.36 · 1a2b3c4". The version is the manifest's
+// (as on Brave's extensions page), branch and hash come from version.js (may be missing).
 const v = globalThis.TAB2TV_VERSION;
-$('version').textContent = v ? `${v.branch} · v${v.version} · ${v.commit}` : '';
+const version = 'v' + chrome.runtime.getManifest().version;
+$('version').textContent = v ? `${v.branch} · ${version} · ${v.commit}` : version;
