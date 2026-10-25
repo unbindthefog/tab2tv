@@ -36,8 +36,8 @@ function check(name, ok, detail) {
   if (!ok) failed++;
 }
 
-// YouTube is on the default auto list; placeholder mode makes "page restored" checkable.
-await options(`chrome.storage.local.set({backgroundCloseSec:${CLOSE_SEC}, autoSites:["youtube.com"], parallel:false})`);
+// Automatic mode on (default is off) with YouTube on the list; placeholder mode makes "page restored" checkable.
+await options(`chrome.storage.local.set({autoMode:true, backgroundCloseSec:${CLOSE_SEC}, autoSites:["youtube.com"], parallel:false})`);
 // Leftover tabs from earlier runs would be matched by URL; start clean.
 await options('chrome.tabs.query({url:"https://www.youtube.com/*"}).then(t=>chrome.tabs.remove(t.map(x=>x.id)))');
 for (const key of Object.keys(VIDEOS)) {
@@ -81,6 +81,6 @@ await sleep(1500);
 s = await state();
 check('owner B returns its video: background C closed too, TV free', s.owner === null && s.tabs.length === 0 && (await tvWindows()) === 0, s);
 
-await options('chrome.storage.local.remove(["backgroundCloseSec","autoSites","parallel"])');
+await options('chrome.storage.local.remove(["autoMode","backgroundCloseSec","autoSites","parallel"])');
 console.log(failed ? `${failed} check(s) failed` : 'all checks passed');
 process.exit(failed ? 1 : 0);

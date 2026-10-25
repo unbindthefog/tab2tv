@@ -28,6 +28,24 @@
   .lamp.on { color: var(--on); }
   .lamp.off { color: var(--off); }
   .lamp.info { color: var(--info); }
+  /* Tiny5 (fonts/tiny5, OFL): title of the video under SEND. Pixel font with 8 pixels per em
+     (128 of 1024 units each): 8px draws it 1:1, on a Retina display one font pixel = 2×2 screen
+     pixels. Single weight: no synthesized bold. */
+  @font-face { font-family: "Tiny5"; font-display: block; src: url(fonts/tiny5/Tiny5-latin.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Tiny5"; font-display: block; src: url(fonts/tiny5/Tiny5-latin-ext.woff2) format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+  /* Centered in the lower quarter, outside the flex flow: legend and lamp stay centered whether a
+     title is shown or not. Whole pixels only, so the pixel font never lands on a half pixel: the
+     key's inner box is 100 px (102 minus the border), the band starts at 81 px (lower quarter, moved 5 px down by eye), and with
+     a 10 px line height one line (10) or two (20) center with whole-pixel margins (7 or 2). */
+  .key { position: relative; }
+  .title { position: absolute; left: 0; right: 0; top: 81px; height: 24px; padding: 0 6px; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center; }
+  .title:has(> span:empty) { display: none; }
+  .title > span { font: 400 8px/10px "Tiny5", var(--mono); font-synthesis: none; letter-spacing: 0; text-transform: none;
+    color: var(--disabled); overflow: hidden; word-break: break-word;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   footer { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 10px 2px 0; }
   h1 { font: 600 10px var(--mono); letter-spacing: .2em; color: var(--text); margin: 0; }
   #version { font: 10px var(--mono); color: var(--disabled); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -40,7 +58,7 @@
      focus on opening, so Enter does nothing. -->
 <div class="panel">
   <button class="key" id="closeAll" type="button" title="Alle TV-Fenster schließen">CLEAR<span class="lamp" id="clearLamp"></span></button>
-  <button class="key" id="tabToggle" type="button" title="Video dieses Tabs auf den TV / zurückholen">SEND<span class="lamp" id="sendLamp"></span></button>
+  <button class="key" id="tabToggle" type="button" title="Video dieses Tabs auf den TV / zurückholen">SEND<span class="lamp" id="sendLamp"></span><span class="title"><span id="sendTitle"></span></span></button>
   <button class="key" id="options" type="button" title="Einstellungen">OPT<span class="lamp"></span></button>
   <button class="key" id="auto" type="button" title="Automatik an/aus">AUTO<span class="lamp" id="autoLamp"></span></button>
 </div>

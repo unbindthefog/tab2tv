@@ -4,7 +4,7 @@ const TAB2TV_POPUP_URL = 'about:blank#tab2tv';
 
 // Shared settings defaults, used by content script, background and options page.
 const TAB2TV_DEFAULTS = {
-  autoMode: true,           // master switch (toolbar icon): automatic start + TV follows active tab
+  autoMode: false,          // master switch (toolbar icon): automatic start + TV follows active tab
   autoAllSites: false,      // automatic output on every website
   autoSites: ['youtube.com'], // websites with automatic output (domain, includes subdomains)
   parallel: true,           // keep video visible in the page player

@@ -268,6 +268,12 @@
   }
   // Called by the service worker's probe (chrome.scripting.executeScript runs in this isolated world).
   globalThis.tab2tvCandidateScore = candidateScore;
+  // Title of this frame's video for the popup: the page's media session (set by most players, e.g.
+  // YouTube), else the document title without a " - YouTube" suffix.
+  globalThis.tab2tvVideoTitle = () => {
+    const title = navigator.mediaSession?.metadata?.title || document.title.replace(/\s+[-–|·]\s+YouTube$/, '');
+    return title.trim() || null;
+  };
   // Diagnostics for tools/scan-sites.mjs: every video of this frame and why automatic output
   // would ignore it (reason null = it would be sent to the TV when started by the user).
   globalThis.tab2tvDebugVideos = () => [...document.querySelectorAll('video')].map(v => {
