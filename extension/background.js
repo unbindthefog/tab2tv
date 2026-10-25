@@ -294,7 +294,10 @@ async function placePopup(senderTab, frameId) {
   });
   await takeOverTv(senderTab.id);
   refreshBadge();
-  return { ok: true, display: { width: target.bounds.width, height: target.bounds.height } };
+  // Physical resolution of the TV (bounds are in scaled points; a Retina-like scale doubles them).
+  const mode = target.modes?.find(m => m.isSelected);
+  const nativeHeight = mode?.heightInNativePixels || Math.round(target.bounds.height * (mode?.deviceScaleFactor || 1));
+  return { ok: true, display: { width: target.bounds.width, height: target.bounds.height, nativeHeight } };
 }
 
 // All TV tabs share one fullscreen window: showing another video is a tab switch there, no

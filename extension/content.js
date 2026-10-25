@@ -150,7 +150,6 @@
     applyPageMode();
     bindVideoEvents(video);
     session.captions = startCaptionMirror(video);
-    if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'max' }));
 
     popup.addEventListener('pagehide', () => stopTv({ reason: 'popup closed' }));
     // Also ends the output if this instance was cut off by an extension update: nothing else could
@@ -169,6 +168,10 @@
       toast(res?.reason === 'noDisplay' ? 'Kein zweiter Bildschirm verbunden.' : 'Ausgabe auf den TV fehlgeschlagen.');
       return;
     }
+    // YouTube picks its quality from the small in-page player: raise it up to the TV's resolution
+    // (not beyond, e.g. no 4K for a 1080p AirPlay display: that only costs bandwidth and a rebuffer).
+    session.tvHeight = res.display.nativeHeight;
+    if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: session.tvHeight }));
     // The TV tab waits in the background of the TV window until its first picture is there; the TV
     // keeps showing the placeholder or the previous video meanwhile, so there is no black frame.
     await firstFrame(tv.video, 1500);
@@ -226,7 +229,7 @@
       session.tv.video.srcObject = s;
       session.tv.video.play().catch(() => {});
       session.tv.stage.classList.remove('black');
-      if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'max' }));
+      if (isYouTube && session.tvHeight) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: session.tvHeight }));
     };
     const onEnded = () => {
       if (settings.onEnded === 'return') stopTv({ reason: 'ended' });
@@ -266,8 +269,9 @@
       s.captions?.stop();
       if (pause) s.video.pause();
       restorePageMode(s);
-      if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'auto' }));
     } finally {
+      // Quality choice back to YouTube even if a cleanup step threw.
+      if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'auto' }));
       if (alive()) chrome.runtime.sendMessage({ type: 'stopped' }).catch(() => {});
     }
   }
