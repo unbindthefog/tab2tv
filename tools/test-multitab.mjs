@@ -76,7 +76,7 @@ check(`after ${CLOSE_SEC}s: background window A closed, only C left`, s.owner ==
 check('A page restored', (await placeholder('A')) === 0);
 
 await play('B');
-await evalIn(VIDEOS.B, 'document.querySelector(".tab2tv-placeholder button").click()');
+await options(`chrome.runtime.sendMessage({type:"toggleTab", tabId:${id.B}, probe:[]})`);   // SEND in the popup
 await sleep(1500);
 s = await state();
 check('owner B returns its video: background C closed too, TV free', s.owner === null && s.tabs.length === 0 && (await tvWindows()) === 0, s);

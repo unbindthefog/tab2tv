@@ -300,7 +300,8 @@
   });
 
   // ---------------------------------------------------------------------------
-  // Page side: placeholder or parallel hint
+  // Page side: in placeholder mode a dark placeholder replaces the video picture. In the parallel
+  // view the page stays untouched. Returning the video is done from the toolbar popup (SEND).
 
   let pageStyle = null;
   function ensurePageStyle() {
@@ -308,30 +309,20 @@
     pageStyle = document.createElement('style');
     pageStyle.textContent = `
       video[data-tab2tv-hidden] { opacity: 0 !important; }
-      .tab2tv-placeholder { position: absolute; z-index: 2147483000; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; gap: 12px; background: #111; color: #ddd;
-        font: 15px/1.4 system-ui, sans-serif; pointer-events: none; box-sizing: border-box; }
-      .tab2tv-placeholder.parallel { background: none; justify-content: flex-start; align-items: flex-end; padding: 10px; }
-      .tab2tv-placeholder button { pointer-events: auto; font: inherit; color: #fff; background: #2e7d32;
-        border: 0; border-radius: 6px; padding: 6px 14px; cursor: pointer; }
-      .tab2tv-placeholder.parallel .tab2tv-label { display: none; }
-      .tab2tv-placeholder.parallel button { background: rgba(0,0,0,.6); }`;
+      .tab2tv-placeholder { position: absolute; z-index: 2147483000; display: flex;
+        align-items: center; justify-content: center; background: #111; color: #ddd;
+        font: 15px/1.4 system-ui, sans-serif; pointer-events: none; box-sizing: border-box; }`;
     (document.head || document.documentElement).append(pageStyle);
   }
 
   function applyPageMode() {
+    if (settings.parallel) return;
     ensurePageStyle();
     const v = session.video;
-    if (!settings.parallel) v.setAttribute('data-tab2tv-hidden', '');
+    v.setAttribute('data-tab2tv-hidden', '');
     const ph = document.createElement('div');
-    ph.className = 'tab2tv-placeholder' + (settings.parallel ? ' parallel' : '');
-    const label = document.createElement('div');
-    label.className = 'tab2tv-label';
-    label.textContent = 'Wird auf TV wiedergegeben';
-    const btn = document.createElement('button');
-    btn.textContent = 'Zurückholen';
-    btn.addEventListener('click', e => { e.stopPropagation(); stopTv({ reason: 'button' }); });
-    ph.append(label, btn);
+    ph.className = 'tab2tv-placeholder';
+    ph.textContent = 'Wird auf TV wiedergegeben';
     v.after(ph);
     // Keep the placeholder exactly over the video without touching page layout.
     const sync = () => {

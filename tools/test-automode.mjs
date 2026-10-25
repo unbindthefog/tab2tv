@@ -93,9 +93,7 @@ s = await state();
 check('popup tab button again: B on TV', s.owner === id.B && s.tabs.includes(id.B), s);
 
 // Clean up: return everything.
-for (const key of Object.keys(VIDEOS)) {
-  await evalIn(VIDEOS[key], 'document.querySelector(".tab2tv-placeholder button")?.click()').catch(() => {});
-}
+await options('chrome.runtime.sendMessage({type:"closeAll"})');   // CLEAR in the popup
 await options('chrome.storage.local.remove(["autoMode","autoSites"])');
 console.log(failed ? `${failed} check(s) failed` : 'all checks passed');
 process.exit(failed ? 1 : 0);

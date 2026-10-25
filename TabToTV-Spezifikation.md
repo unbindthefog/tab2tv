@@ -55,7 +55,7 @@ Die Erweiterung soll sich anfühlen, als wäre der TV einfach der Ort, an dem Vi
 
 **Darstellung auf dem Hauptbildschirm**
 
-- Standardmäßig ersetzt ein Platzhalter mit Hinweis „Wird auf TV wiedergegeben“ und einem Button zum Zurückholen das Videobild im Player. Bei aktiver Paralleldarstellung läuft das Video stattdessen im Player weiter, und ein dezenter Hinweis mit Zurückholen-Button bleibt erreichbar.
+- Standardmäßig ersetzt ein Platzhalter mit Hinweis „Wird auf TV wiedergegeben“ das Videobild im Player. Bei aktiver Paralleldarstellung läuft das Video stattdessen im Player weiter, ohne Einblendung.
 - Das Seitenlayout darf dadurch nicht verrutschen.
 - Das Erweiterungssymbol zeigt den Status (aktiv, inaktiv, kein Zielbildschirm).
 
@@ -68,7 +68,7 @@ Die Erweiterung soll sich anfühlen, als wäre der TV einfach der Ort, an dem Vi
 
 **Beenden und Rückholen**
 
-- Zurückholen per Button am Player (im Platzhalter bzw. im Hinweis bei Paralleldarstellung) oder Erweiterungssymbol. Das Video läuft dann ohne Unterbrechung im Player der Seite weiter.
+- Zurückholen über das Erweiterungssymbol. Das Video läuft dann ohne Unterbrechung im Player der Seite weiter.
 - Bei Videoende: Verhalten einstellbar (auf dem TV stehen lassen, zurückholen, TV schwarz).
 - Wird der Zielbildschirm getrennt: Video sofort zurück in die Seite, pausiert.
 - Wird der Tab geschlossen oder verlässt er die Website: Ausgabe auf dem TV endet sauber.
