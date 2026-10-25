@@ -116,3 +116,7 @@ $('options').addEventListener('click', () => {
     : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
   render();
 })();
+
+// Footer line, as in Jan's other projects: "dev · v0.36 · 1a2b3c4" (empty without version.js).
+const v = globalThis.TAB2TV_VERSION;
+$('version').textContent = v ? `${v.branch} · v${v.version} · ${v.commit}` : '';
