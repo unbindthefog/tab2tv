@@ -34,12 +34,14 @@
 </style>
 </head>
 <body>
-<!-- Frequently used keys on top: shortest mouse path from the toolbar icon. -->
+<!-- Frequently used keys on the right: the popup opens below the toolbar icon, aligned to its right
+     edge, so SEND sits right under the mouse after the click on the icon. Focus starts on SEND too,
+     not on CLEAR (first in the DOM), so Enter right after opening never closes all TV windows. -->
 <div class="panel">
-  <button class="key" id="tabToggle" type="button" title="Video dieses Tabs auf den TV / zurückholen">SEND<span class="lamp" id="sendLamp"></span></button>
   <button class="key" id="closeAll" type="button" title="Alle TV-Fenster schließen">CLEAR<span class="lamp" id="clearLamp"></span></button>
-  <button class="key" id="auto" type="button" title="Automatik an/aus">AUTO<span class="lamp" id="autoLamp"></span></button>
+  <button class="key" id="tabToggle" type="button" autofocus title="Video dieses Tabs auf den TV / zurückholen">SEND<span class="lamp" id="sendLamp"></span></button>
   <button class="key" id="options" type="button" title="Einstellungen">OPT<span class="lamp"></span></button>
+  <button class="key" id="auto" type="button" title="Automatik an/aus">AUTO<span class="lamp" id="autoLamp"></span></button>
 </div>
 <footer><h1>TABTOTV</h1><span id="version"></span></footer>
 <!-- Branch and hash, written by .git/hooks/post-commit (gitignored, may be missing). -->
