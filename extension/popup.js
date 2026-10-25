@@ -23,8 +23,11 @@ async function render() {
   const [displays, s, state] = await Promise.all([
     chrome.system.display.getInfo(),
     tab2tvLoadSettings(),
-    chrome.storage.session.get({ sessions: {} }),
+    chrome.storage.session.get({ sessions: {}, tvWindowId: null }),
   ]);
+  // TV window open with only its placeholder (see ensureTvWindow in background.js).
+  const tvWindowOpen = state.tvWindowId != null
+    && await chrome.windows.get(state.tvWindowId).then(() => true, () => false);
   autoMode = s.autoMode;
 
   const target = tab2tvPickTarget(displays, s.targetDisplay);
@@ -36,12 +39,15 @@ async function render() {
   $('tabToggle').disabled = busy || (!target && !onTv);
   $('auto').disabled = busy;
   // Also leftovers: TV windows without a page (e.g. after a crash), closed by the same button.
-  const tvWindows = (await chrome.tabs.query({ windowType: 'popup' }))
-    .filter(tab2tvIsOrphanTvTab);
+  // (tabs.move resets the opener, so only TV tabs no session references count as leftovers)
+  const live = new Set(Object.values(state.sessions).map(s => s.tvTabId));
+  const tvWindows = (await chrome.tabs.query({}))
+    .filter(t => tab2tvIsOrphanTvTab(t) && !live.has(t.id));
   const open = Object.keys(state.sessions).length + tvWindows.length;
-  $('closeAll').disabled = busy || !open;
+  // CLEAR: number of videos on the TV; IDLE if only the placeholder is left (CLEAR then closes it).
+  $('closeAll').disabled = busy || (!open && !tvWindowOpen);
   if (problem?.key === 'closeAll') setLamp('clearLamp', problem.code, 'off');
-  else setLamp('clearLamp', open ? String(open) : '', 'info');
+  else setLamp('clearLamp', open ? String(open) : tvWindowOpen ? 'IDLE' : '', 'info');
 
   if (problem?.key === 'auto') setLamp('autoLamp', problem.code, 'off');
   else setLamp('autoLamp', autoMode ? 'ON' : 'OFF', autoMode ? 'on' : 'off');
@@ -79,7 +85,8 @@ $('tabToggle').addEventListener('click', () => {
   // tab2tvProbeFrames). Returning needs no probe.
   runAction('tabToggle', wasOnTv ? Promise.resolve([]) : tab2tvProbeFrames(tab.id), async results => {
     if (unsupported(results)) return 'N/A';          // e.g. a browser page
-    if (!wasOnTv && noVideo(results)) return 'NO VIDEO';
+    // No video here: make the TV ready instead (window with its placeholder).
+    if (!wasOnTv && noVideo(results)) return await chrome.runtime.sendMessage({ type: 'openTv' }) ? 'close' : FAILED;
     const ok = await chrome.runtime.sendMessage({ type: 'toggleTab', tabId: tab.id, probe: results });
     return ok ? 'close' : FAILED;
   });
