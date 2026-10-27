@@ -1,7 +1,7 @@
 // Minimal CDP client (no deps) for the isolated test Brave instance (tools/test-brave.sh).
 // Usage: node tools/cdp.mjs <url-substring|type:TYPE> "<js expression>"
 //   NOGESTURE=1  evaluate without user gesture
-//   LOGMS=4000   afterwards collect console messages containing "[TabToTV]" for N ms
+//   LOGMS=4000   afterwards collect console messages containing "[tab2tv]" for N ms
 const [, , match, expr] = process.argv;
 const list = await (await fetch('http://127.0.0.1:9333/json/list')).json();
 const t = list.find(x => match.startsWith('type:') ? x.type === match.slice(5) : x.url.includes(match));
@@ -17,7 +17,7 @@ ws.onmessage = m => {
   if (d.id && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); }
   if (d.method === 'Runtime.consoleAPICalled') {
     const text = d.params.args.map(a => a.value ?? a.description ?? '').join(' ');
-    if (text.includes('[TabToTV]')) logs.push(text);
+    if (text.includes('[tab2tv]')) logs.push(text);
   }
 };
 const send = (method, params = {}) => new Promise(r => {
@@ -35,6 +35,6 @@ const res = await send('Runtime.evaluate', {
 console.log(JSON.stringify(res.result?.result?.value ?? res.result ?? res.error, null, 1));
 if (logMs) {
   await new Promise(r => setTimeout(r, logMs));
-  console.log(logs.length ? logs.join('\n') : '(no [TabToTV] logs)');
+  console.log(logs.length ? logs.join('\n') : '(no [tab2tv] logs)');
 }
 ws.close();

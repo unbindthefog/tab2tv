@@ -85,7 +85,7 @@ function tab2tvProbeFrames(tabId) {
   return chrome.scripting.executeScript({
     target: { tabId, allFrames: true },
     func: () => globalThis.tab2tvCandidateScore?.() ?? 0,
-  }).catch(e => { console.debug('[TabToTV] probe failed:', e.message); return null; });
+  }).catch(e => { console.debug('[tab2tv] probe failed:', e.message); return null; });
 }
 
 // Hostname of the website the user is on. For an embedded player that is the top-level page,

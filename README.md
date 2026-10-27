@@ -1,4 +1,4 @@
-# TabToTV
+# tab2tv
 
 Brave-Erweiterung, die ein im Browser laufendes Video im Vollbild auf einem zweiten Bildschirm (z. B. TV per AirPlay) ausgibt. Die Webseite bleibt auf dem Hauptbildschirm normal bedienbar, der Player der Seite steuert das Bild auf dem TV.
 

@@ -1,4 +1,4 @@
-// TabToTV content script, runs in every frame.
+// tab2tv content script, runs in every frame.
 // Approach: the page opens a same-origin popup, the original <video> is mirrored into it
 // via captureStream(), and the service worker moves the popup fullscreen onto the TV.
 // The original element stays in the page, so the site's own player keeps full control.
@@ -22,7 +22,7 @@
   });
 
   const isYouTube = /^www\.youtube(-nocookie)?\.com$/.test(location.hostname);
-  const log = (...a) => console.debug('[TabToTV]', ...a);
+  const log = (...a) => console.debug('[tab2tv]', ...a);
 
   // The website the user is on (top-level page, also for embedded players); null if masked.
   const siteHostname = tab2tvSiteHostname(window.top === window, location.hostname, location.ancestorOrigins);
@@ -179,7 +179,7 @@
 
   function buildPopup(popup) {
     const d = popup.document;
-    d.title = 'TabToTV';
+    d.title = 'tab2tv';
     const style = d.createElement('style');
     style.textContent = `
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }

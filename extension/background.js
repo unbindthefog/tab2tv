@@ -1,4 +1,4 @@
-// TabToTV service worker: display tracking, popup placement, badge state, cleanup.
+// tab2tv service worker: display tracking, popup placement, badge state, cleanup.
 importScripts('settings.js');
 
 // tabId -> { popupWindowId, openerWindowId, displayId, frameId }, persisted because the worker
@@ -159,7 +159,7 @@ async function refreshBadgeNow() {
   const globalColor = !target ? grey : auto ? green : red;
   await chrome.action.setBadgeBackgroundColor({ color: globalColor });
   await chrome.action.setBadgeText({ text: !target ? '–' : auto ? '' : 'AUS' });
-  const globalTitle = 'TabToTV: ' + (target ? toggleHint : 'kein Zielbildschirm');
+  const globalTitle = 'tab2tv: ' + (target ? toggleHint : 'kein Zielbildschirm');
   await chrome.action.setTitle({ title: globalTitle });
   // Per tab only the text "TV" (color and tooltip stay global, so nothing per tab can go stale).
   // Sessions end in several places (evicted, released, closed), so diff against the last run
@@ -186,7 +186,7 @@ async function handleDisplayChange() {
   for (const [tabId, s] of lost) {
     sendToFrame(tabId, s, { type: 'displayLost' });
     closePopup(s.popupWindowId);
-    console.debug('[TabToTV] display lost, stopped tab', tabId, 'after', Date.now() - t0, 'ms');
+    console.debug('[tab2tv] display lost, stopped tab', tabId, 'after', Date.now() - t0, 'ms');
   }
   logDisplays('changed');
   refreshBadge();
@@ -289,7 +289,7 @@ async function raiseSession(tabId) {
   await chrome.windows.update(s.popupWindowId, { focused: true });
   await chrome.windows.update(s.openerWindowId, { focused: true });
   await takeOverTv(+tabId);
-  console.debug('[TabToTV] raised popup of tab', tabId, 'in', Math.round(performance.now() - t0), 'ms');
+  console.debug('[tab2tv] raised popup of tab', tabId, 'in', Math.round(performance.now() - t0), 'ms');
 }
 
 function closePopup(windowId) {
@@ -321,7 +321,7 @@ async function closeAllTvWindows() {
 async function closeOrphanPopups(reason) {
   const tabs = await chrome.tabs.query({ windowType: 'popup' });
   for (const tab of tabs.filter(tab2tvIsOrphanTvTab)) {
-    console.debug('[TabToTV] closing leftover TV popup', tab.windowId, '(' + reason + ')');
+    console.debug('[tab2tv] closing leftover TV popup', tab.windowId, '(' + reason + ')');
     closePopup(tab.windowId);
   }
 }

@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "TabToTV",
-  "version": "0.40",
+  "name": "tab2tv",
+  "version": "0.41",
   "description": "Gibt das Video eines Tabs im Vollbild auf dem zweiten Bildschirm aus.",
   "permissions": ["system.display", "storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
-  "action": { "default_title": "TabToTV", "default_popup": "popup.html" },
+  "action": { "default_title": "tab2tv", "default_popup": "popup.html" },
   "options_page": "options.html",
   "content_scripts": [
     {

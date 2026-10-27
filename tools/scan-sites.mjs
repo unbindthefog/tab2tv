@@ -28,7 +28,7 @@ async function collectFromWorlds(ws, expr) {
     const d = JSON.parse(m.data);
     if (d.method === 'Runtime.executionContextCreated') {
       const c = d.params.context;
-      if (c.auxData?.type === 'isolated' && /TabToTV/.test(c.name)) contexts.push(c.id);
+      if (c.auxData?.type === 'isolated' && /tab2tv/.test(c.name)) contexts.push(c.id);
     }
     if (d.id && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); }
   };
