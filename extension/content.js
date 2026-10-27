@@ -135,7 +135,8 @@
     if (!stream) return;
 
     // Must happen while the user activation is still valid.
-    const popup = window.open(TAB2TV_POPUP_URL, 'tab2tv_' + Date.now(), 'popup,width=480,height=270');
+    // PROTOTYPE: a normal tab (no 'popup' feature); the service worker moves it into the TV window.
+    const popup = window.open(TAB2TV_POPUP_URL, 'tab2tv_' + Date.now());
     if (!popup) {
       toast('Popup wurde blockiert.', [{ label: 'Auf TV abspielen', action: () => startTv(video) }], 10000);
       return;
@@ -149,7 +150,6 @@
     applyPageMode();
     bindVideoEvents(video);
     session.captions = startCaptionMirror(video);
-    if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'max' }));
 
     popup.addEventListener('pagehide', () => stopTv({ reason: 'popup closed' }));
     // Also ends the output if this instance was cut off by an extension update: nothing else could
@@ -168,6 +168,16 @@
       toast(res?.reason === 'noDisplay' ? 'Kein zweiter Bildschirm verbunden.' : 'Ausgabe auf den TV fehlgeschlagen.');
       return;
     }
+    // YouTube picks its quality from the small in-page player: raise it up to the TV's resolution
+    // (not beyond, e.g. no 4K for a 1080p AirPlay display: that only costs bandwidth and a rebuffer).
+    session.tvHeight = res.display.nativeHeight;
+    if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: session.tvHeight }));
+    // The TV tab waits in the background of the TV window until its first picture is there; the TV
+    // keeps showing the placeholder or the previous video meanwhile, so there is no black frame.
+    await firstFrame(tv.video, 1500);
+    if (session?.popup !== popup) return;
+    tv.video.play().catch(e => log('TV play refused', e));
+    chrome.runtime.sendMessage({ type: 'show' }).catch(() => {});
     // Brave keeps the toolbar visible in fullscreen unless the user disabled it.
     setTimeout(() => {
       if (session?.popup === popup && !toolbarWarned && popup.innerHeight < res.display.height - 4) {
@@ -175,6 +185,15 @@
         toast('Auf dem TV ist oben noch eine Leiste sichtbar. Abhilfe in Brave: Menü „Ansicht“ → „Symbolleiste im Vollbildmodus immer anzeigen“ ausschalten (⇧⌘F).', [], 15000);
       }
     }, 2000);
+  }
+
+  // Resolves once the video has its first frame (or after timeoutMs, so the TV never stays hidden).
+  function firstFrame(video, timeoutMs) {
+    if (video.readyState >= 2) return Promise.resolve();
+    return new Promise(resolve => {
+      video.addEventListener('loadeddata', resolve, { once: true });
+      setTimeout(resolve, timeoutMs);
+    });
   }
 
   function buildPopup(popup) {
@@ -210,7 +229,7 @@
       session.tv.video.srcObject = s;
       session.tv.video.play().catch(() => {});
       session.tv.stage.classList.remove('black');
-      if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'max' }));
+      if (isYouTube && session.tvHeight) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: session.tvHeight }));
     };
     const onEnded = () => {
       if (settings.onEnded === 'return') stopTv({ reason: 'ended' });
@@ -250,8 +269,9 @@
       s.captions?.stop();
       if (pause) s.video.pause();
       restorePageMode(s);
-      if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'auto' }));
     } finally {
+      // Quality choice back to YouTube even if a cleanup step threw.
+      if (isYouTube) document.dispatchEvent(new CustomEvent('tab2tv:quality', { detail: 'auto' }));
       if (alive()) chrome.runtime.sendMessage({ type: 'stopped' }).catch(() => {});
     }
   }

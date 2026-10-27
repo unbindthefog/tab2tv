@@ -82,6 +82,13 @@ $('autoAllSites').addEventListener('change', syncAutoFields);
 
 chrome.system.display.onDisplayChanged.addListener(() => setTimeout(renderDisplays, 300));
 
+// Brave setting that frames normal windows (also the TV window) with rounded corners and a border.
+// Extension pages can't link to brave:// pages directly; chrome://settings opens Brave's settings.
+$('braveCorners').addEventListener('click', e => {
+  e.preventDefault();
+  chrome.tabs.create({ url: 'chrome://settings/appearance' });
+});
+
 $('showNames').addEventListener('click', async () => {
   await loadLabels(true);
   renderDisplays();

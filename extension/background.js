@@ -1,8 +1,14 @@
 // tab2tv service worker: display tracking, popup placement, badge state, cleanup.
 importScripts('settings.js');
 
-// tabId -> { popupWindowId, openerWindowId, displayId, frameId }, persisted because the worker
-// can be suspended. One session per tab; frameId is the (i)frame whose video is on the TV.
+// tabId -> { tvTabId, openerWindowId, displayId, frameId }, persisted because the worker can be
+// suspended. One session per tab; frameId is the (i)frame whose video is on the TV, tvTabId its
+// tab in the shared TV window.
+//
+// PROTOTYPE (feature/tv-window): all TV outputs are tabs of ONE fullscreen window on the TV.
+// Switching between videos activates another tab in it instead of focusing another fullscreen
+// window, so macOS doesn't switch Spaces (no slide animation). The page opens its TV view as a
+// normal tab (window.open without 'popup'); tabs can only move between normal windows.
 async function getSessions() {
   return (await chrome.storage.session.get({ sessions: {} })).sessions;
 }
@@ -56,7 +62,7 @@ async function takeOverTv(tabId) {
   });
   for (const [id, s] of evicted) {
     sendToFrame(id, s, { type: 'stop' });
-    closePopup(s.popupWindowId);
+    closeTv(s);
   }
   if (prev) sendToFrame(prev[0], prev[1], { type: 'background' });
   const own = (await getSessions())[tabId];
@@ -75,7 +81,7 @@ async function releaseTv(tabId) {
   });
   for (const [id, s] of others) {
     sendToFrame(id, s, { type: 'stop' });
-    closePopup(s.popupWindowId);
+    closeTv(s);
   }
 }
 
@@ -185,9 +191,11 @@ async function handleDisplayChange() {
   const lost = await removeSessionsWhere(s => !usable.has(s.displayId));
   for (const [tabId, s] of lost) {
     sendToFrame(tabId, s, { type: 'displayLost' });
-    closePopup(s.popupWindowId);
+    closeTv(s);
     console.debug('[tab2tv] display lost, stopped tab', tabId, 'after', Date.now() - t0, 'ms');
   }
+  const { tvDisplayId } = await chrome.storage.session.get({ tvDisplayId: null });
+  if (tvDisplayId != null && !usable.has(tvDisplayId)) closeTvWindow();
   logDisplays('changed');
   refreshBadge();
 }
@@ -232,21 +240,27 @@ chrome.storage.onChanged.addListener(changes => {
 
 // --- Popup placement ------------------------------------------------------
 
-async function findPopupWindowForOpener(openerTabId, excludeWindowId) {
+async function findTvTabForOpener(openerTabId, excludeTabId) {
   for (let i = 0; i < 20; i++) {
-    const tabs = await chrome.tabs.query({ windowType: 'popup' });
-    // Newest matching popup (highest tab id), in case an older one of this tab is still closing.
+    const tabs = await chrome.tabs.query({});
+    // Newest matching tab (highest id), in case an older one of this tab is still closing.
     const tab = tabs
-      .filter(t => t.openerTabId === openerTabId && t.windowId !== excludeWindowId
-        && (t.url || t.pendingUrl) === TAB2TV_POPUP_URL)   // never a popup the site opened itself
+      .filter(t => t.openerTabId === openerTabId && t.id !== excludeTabId
+        && (t.url || t.pendingUrl) === TAB2TV_POPUP_URL)   // never a tab the site opened itself
       .sort((a, b) => b.id - a.id)[0];
-    if (tab) return tab.windowId;
+    if (tab) return tab;
     await new Promise(r => setTimeout(r, 50));
   }
   return null;
 }
 
+const placing = new Set();   // TV tab ids between tabs.move and their session (see placePopup)
+
 async function placePopup(senderTab, frameId) {
+  // window.open put the TV tab in front of the page in its window. A hidden page stops decoding
+  // video (Chromium's background optimization) and stutters when it comes back: give the page its
+  // tab back first, before anything else; the TV picture may stall briefly instead.
+  chrome.tabs.update(senderTab.id, { active: true }).catch(() => {});
   const target = await findTargetDisplay();
   if (!target) return { ok: false, reason: 'noDisplay' };
 
@@ -257,48 +271,123 @@ async function placePopup(senderTab, frameId) {
   if (previous && previous.frameId !== frameId) {
     await updateSessions(s => { if (s[senderTab.id]?.frameId === previous.frameId) delete s[senderTab.id]; });
     sendToFrame(senderTab.id, previous, { type: 'stop' });
-    closePopup(previous.popupWindowId);
+    closeTv(previous);
   }
 
-  const popupWindowId = await findPopupWindowForOpener(senderTab.id, previous?.popupWindowId);
-  if (popupWindowId == null) {
+  const tvTab = await findTvTabForOpener(senderTab.id, previous?.tvTabId);
+  if (!tvTab) {
     // The previous frame's session may already be gone: don't leave the TV owned by a tab without output.
     releaseTv(senderTab.id);
     return { ok: false, reason: 'noPopup' };
   }
 
-  // Moving must not include width/height, and 'fullscreen' cannot be combined with bounds.
-  await chrome.windows.update(popupWindowId, { left: target.bounds.left + 40, top: target.bounds.top + 40 });
-  await chrome.windows.update(popupWindowId, { state: 'fullscreen' });
-  await chrome.windows.update(senderTab.windowId, { focused: true });
+  const t0 = performance.now();
+  // The video is just another tab of the TV window (opened once, with its placeholder). It waits
+  // there in the background until the page reports its first picture ('show'). No focus changes:
+  // the page's window keeps focus (only creating the TV window needs to give it back).
+  // tabs.move resets openerTabId: until the session names the tab, `placing` keeps the leftover
+  // cleanup (onUpdated) from closing it.
+  placing.add(tvTab.id);
+  try {
+    const tvWindowId = await ensureTvWindow(target);
+    await chrome.tabs.move(tvTab.id, { windowId: tvWindowId, index: -1 });
+  } catch (e) {
+    // E.g. a page in an incognito window: its tab can't move into the normal TV window.
+    console.debug('[tab2tv] placing failed:', e.message);
+    placing.delete(tvTab.id);
+    closeTvTab(tvTab.id);
+    releaseTv(senderTab.id);
+    return { ok: false, reason: 'placeFailed' };
+  }
+  console.debug('[tab2tv] placed TV tab in', Math.round(performance.now() - t0), 'ms');
 
+  // Owner right away (so nothing evicts or releases it before its first picture), but 'shown'
+  // only after 'show': until then raiseSession leaves the TV as it is.
   await setSession(senderTab.id, {
-    popupWindowId, openerWindowId: senderTab.windowId, displayId: target.id, frameId,
+    tvTabId: tvTab.id, openerWindowId: senderTab.windowId, displayId: target.id, frameId, shown: false,
   });
+  placing.delete(tvTab.id);
   await takeOverTv(senderTab.id);
   refreshBadge();
-  return { ok: true, display: { width: target.bounds.width, height: target.bounds.height } };
+  // Physical resolution of the TV (bounds are in scaled points; a Retina-like scale doubles them).
+  const mode = target.modes?.find(m => m.isSelected);
+  const nativeHeight = mode?.heightInNativePixels || Math.round(target.bounds.height * (mode?.deviceScaleFactor || 1));
+  return { ok: true, display: { width: target.bounds.width, height: target.bounds.height, nativeHeight } };
 }
 
-// Every fullscreen popup lives in its own macOS Space on the TV. Focusing it makes macOS switch
-// the TV display to that Space; focus then goes straight back to the page's window.
+// All TV tabs share one fullscreen window: showing another video is a tab switch there, no
+// window focus and no Space change.
 async function raiseSession(tabId) {
   const s = (await getSessions())[tabId];
   if (!s) return;
   const t0 = performance.now();
-  await chrome.windows.update(s.popupWindowId, { focused: true });
-  await chrome.windows.update(s.openerWindowId, { focused: true });
+  if (s.shown === false) return;   // no picture yet; 'show' brings it to the front
+  await chrome.tabs.update(s.tvTabId, { active: true });
   await takeOverTv(+tabId);
   console.debug('[tab2tv] raised popup of tab', tabId, 'in', Math.round(performance.now() - t0), 'ms');
 }
 
-function closePopup(windowId) {
-  if (windowId != null) chrome.windows.remove(windowId).catch(() => {});
+function closeTv(session) {
+  if (session?.tvTabId != null) chrome.tabs.remove(session.tvTabId).catch(() => {});
+}
+function closeTvTab(tabId) {
+  chrome.tabs.remove(tabId).catch(() => {});
 }
 
-// Popup button: end every output (videos return to their pages) and close every TV window,
-// including leftovers without a page.
+// The shared TV window, if it still exists (its id is kept across worker restarts). It always
+// holds the placeholder tab (tv-idle.html), shown while no video is on the TV; so the window stays
+// open between videos and only the first one needs the fullscreen animation.
+const TV_IDLE_URL = chrome.runtime.getURL('tv-idle.html');
+async function getTvWindowId() {
+  const { tvWindowId } = await chrome.storage.session.get({ tvWindowId: null });
+  if (tvWindowId == null) return null;
+  return chrome.windows.get(tvWindowId).then(w => w.id, () => null);
+}
+
+// Opens the TV window with its placeholder on the target display, unless it is already open.
+let openingTvWindow = null;
+function ensureTvWindow(target) {
+  openingTvWindow ??= (async () => {
+    const existing = await getTvWindowId();
+    const { tvDisplayId } = await chrome.storage.session.get({ tvDisplayId: null });
+    if (existing != null && tvDisplayId === target.id) return existing;
+    // Target changed (other display chosen, or the TV came back under a new id): start over there.
+    // Forget it first: windows.onRemoved must not later clear the id of the new window.
+    if (existing != null) {
+      await chrome.storage.session.remove(['tvWindowId', 'tvDisplayId']);
+      await chrome.windows.remove(existing).catch(() => {});
+    }
+    const focused = await chrome.windows.getLastFocused().catch(() => null);
+    const w = await chrome.windows.create({ url: TV_IDLE_URL, left: target.bounds.left + 40, top: target.bounds.top + 40 });
+    await chrome.storage.session.set({ tvWindowId: w.id, tvDisplayId: target.id });
+    await chrome.windows.update(w.id, { state: 'fullscreen' });
+    if (focused) await chrome.windows.update(focused.id, { focused: true }).catch(() => {});
+    return w.id;
+  })().finally(() => { openingTvWindow = null; });
+  return openingTvWindow;
+}
+
+// Shows the owner's video on the TV, or the placeholder if no video is on it.
+async function showCurrentOnTv() {
+  const tvWindowId = await getTvWindowId();
+  if (tvWindowId == null) return;
+  const { sessions, tvOwner } = await chrome.storage.session.get({ sessions: {}, tvOwner: null });
+  const owner = tvOwner != null && sessions[tvOwner];
+  if (owner && owner.shown !== false) return chrome.tabs.update(owner.tvTabId, { active: true }).catch(() => {});
+  const [idle] = await chrome.tabs.query({ windowId: tvWindowId, url: TV_IDLE_URL });
+  if (idle) chrome.tabs.update(idle.id, { active: true }).catch(() => {});
+}
+
+async function closeTvWindow() {
+  const tvWindowId = await getTvWindowId();
+  await chrome.storage.session.remove(['tvWindowId', 'tvDisplayId']);
+  if (tvWindowId != null) chrome.windows.remove(tvWindowId).catch(() => {});
+}
+
+// CLEAR: with videos on the TV, end them all (videos return to their pages) and keep the TV window
+// with its placeholder; with only the placeholder left, close the TV window too.
 async function closeAllTvWindows() {
+  if (!Object.keys(await getSessions()).length && !(await findOrphanTvTabs()).length) return closeTvWindow();
   const removed = await updateState(state => {
     const all = Object.entries(state.sessions);
     state.sessions = {};
@@ -307,11 +396,17 @@ async function closeAllTvWindows() {
   });
   for (const [tabId, s] of removed) {
     sendToFrame(tabId, s, { type: 'stop' });
-    closePopup(s.popupWindowId);
+    closeTv(s);
   }
-  const leftovers = await chrome.tabs.query({ windowType: 'popup' });
-  // Leftovers only (no opener): a TV window that is just being opened has one and is left alone.
-  for (const t of leftovers) if (tab2tvIsOrphanTvTab(t)) closePopup(t.windowId);
+  // Leftovers only (no opener): a TV tab that is just being opened has one and is left alone.
+  for (const t of await findOrphanTvTabs()) closeTvTab(t.id);
+}
+
+// TV tabs that no session references. The opener can't be used alone: tabs.move into the TV
+// window resets openerTabId, so every live TV tab would look like a leftover.
+async function findOrphanTvTabs() {
+  const live = new Set(Object.values(await getSessions()).map(s => s.tvTabId));
+  return (await chrome.tabs.query({})).filter(t => tab2tvIsOrphanTvTab(t) && !live.has(t.id) && !placing.has(t.id));
 }
 
 // --- Leftovers after a browser restart ---------------------------------------
@@ -319,10 +414,14 @@ async function closeAllTvWindows() {
 // an opener tab (the page that opened it); a restored one has none.
 
 async function closeOrphanPopups(reason) {
-  const tabs = await chrome.tabs.query({ windowType: 'popup' });
-  for (const tab of tabs.filter(tab2tvIsOrphanTvTab)) {
-    console.debug('[tab2tv] closing leftover TV popup', tab.windowId, '(' + reason + ')');
-    closePopup(tab.windowId);
+  for (const tab of await findOrphanTvTabs()) {
+    console.debug('[tab2tv] closing leftover TV tab', tab.id, '(' + reason + ')');
+    closeTvTab(tab.id);
+  }
+  // Placeholder tabs outside the current TV window (restored after a browser restart).
+  const tvWindowId = await getTvWindowId();
+  for (const tab of await chrome.tabs.query({ url: TV_IDLE_URL })) {
+    if (tab.windowId !== tvWindowId) closeTvTab(tab.id);
   }
 }
 
@@ -333,9 +432,10 @@ chrome.runtime.onStartup.addListener(() => {
 // Also on every worker start: the extension may be loaded after session restore (missing the
 // events above), and the check is a single cheap query.
 closeOrphanPopups('worker start');
-chrome.tabs.onCreated.addListener(tab => { if (tab2tvIsOrphanTvTab(tab)) closePopup(tab.windowId); });
+chrome.tabs.onCreated.addListener(tab => { if (tab2tvIsOrphanTvTab(tab)) closeTvTab(tab.id); });
 chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
-  if (change.url && tab2tvIsOrphanTvTab(tab)) closePopup(tab.windowId);
+  if (!change.url || !tab2tvIsOrphanTvTab(tab) || placing.has(tabId)) return;
+  getSessions().then(s => { if (!Object.values(s).some(x => x.tvTabId === tabId)) closeTvTab(tabId); });
 });
 
 // --- Messages and triggers ------------------------------------------------
@@ -365,6 +465,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     toggleTabOutput(msg.tabId, msg.probe || []).then(ok => sendResponse(ok), () => sendResponse(false));
     return true;
   }
+  if (msg.type === 'openTv' && fromExtensionPage) {
+    // SEND without a video: make the TV ready (window with placeholder).
+    findTargetDisplay().then(t => t ? ensureTvWindow(t).then(() => true) : false)
+      .then(sendResponse, () => sendResponse(false));
+    return true;
+  }
+  if (msg.type === 'show' && tab) {
+    // First picture of a new TV output is there: bring it to the front and make this tab the owner.
+    updateSessions(s => {
+      const own = s[tab.id];
+      if (!own || own.frameId !== sender.frameId) return null;
+      own.shown = true;
+      return own.tvTabId;
+    }).then(async tvTabId => {
+      if (tvTabId == null) return;
+      // Only if this tab still owns the TV (the user may have switched to another output meanwhile).
+      const { tvOwner } = await chrome.storage.session.get({ tvOwner: null });
+      if (tvOwner === tab.id) await chrome.tabs.update(tvTabId, { active: true }).catch(() => {});
+    });
+  }
   if (msg.type === 'raise' && tab) {
     // Play in a tab with a TV window: it takes the TV over, unless the automatic mode is off.
     isAutoMode().then(on => { if (on) raiseSession(tab.id).catch(() => {}); });
@@ -373,7 +493,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     updateSessions(s => {
       // Ignore a stale stop from a frame whose session was already replaced by another frame.
       if (!s[tab.id] || s[tab.id].frameId !== sender.frameId) return false;
-      closePopup(s[tab.id].popupWindowId);
+      closeTv(s[tab.id]);
       delete s[tab.id];
       return true;
     }).then(stopped => {
@@ -424,18 +544,22 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   if (await isAutoMode()) raiseSession(tabId).catch(() => {});
 });
 
-// Tab closed: make sure nothing stays on the TV.
-chrome.tabs.onRemoved.addListener(async tabId => {
+// Page tab closed: make sure nothing stays on the TV. TV tab closed from outside (e.g. the whole
+// TV window): tell its page to clean up.
+chrome.tabs.onRemoved.addListener(async (tabId, { windowId, isWindowClosing }) => {
   const removed = await removeSessionsWhere((s, id) => +id === tabId);
-  for (const [, s] of removed) closePopup(s.popupWindowId);
+  for (const [, s] of removed) closeTv(s);
   releaseTv(tabId);
+  const lost = await removeSessionsWhere(s => s.tvTabId === tabId);
+  for (const [pageTabId, s] of lost) {
+    sendToFrame(pageTabId, s, { type: 'popupClosed' });
+    await releaseTv(pageTabId);
+  }
+  // Chromium activates a neighbouring tab of the TV window: show the owner's video or the placeholder.
+  if (!isWindowClosing && windowId === await getTvWindowId()) showCurrentOnTv();
 });
 
-// Popup closed from outside (e.g. user, macOS): tell the page to clean up.
 chrome.windows.onRemoved.addListener(async windowId => {
-  const removed = await removeSessionsWhere(s => s.popupWindowId === windowId);
-  for (const [tabId, s] of removed) {
-    sendToFrame(tabId, s, { type: 'popupClosed' });
-    releaseTv(tabId);
-  }
+  const { tvWindowId } = await chrome.storage.session.get({ tvWindowId: null });
+  if (windowId === tvWindowId) chrome.storage.session.remove(['tvWindowId', 'tvDisplayId']);
 });
