@@ -254,6 +254,8 @@ async function findTvTabForOpener(openerTabId, excludeTabId) {
   return null;
 }
 
+const placing = new Set();   // TV tab ids between tabs.move and their session (see placePopup)
+
 async function placePopup(senderTab, frameId) {
   // window.open put the TV tab in front of the page in its window. A hidden page stops decoding
   // video (Chromium's background optimization) and stutters when it comes back: give the page its
@@ -283,15 +285,28 @@ async function placePopup(senderTab, frameId) {
   // The video is just another tab of the TV window (opened once, with its placeholder). It waits
   // there in the background until the page reports its first picture ('show'). No focus changes:
   // the page's window keeps focus (only creating the TV window needs to give it back).
-  const tvWindowId = await ensureTvWindow(target);
-  await chrome.tabs.move(tvTab.id, { windowId: tvWindowId, index: -1 });
-  console.debug('[TabToTV] placed TV tab in', Math.round(performance.now() - t0), 'ms');
+  // tabs.move resets openerTabId: until the session names the tab, `placing` keeps the leftover
+  // cleanup (onUpdated) from closing it.
+  placing.add(tvTab.id);
+  try {
+    const tvWindowId = await ensureTvWindow(target);
+    await chrome.tabs.move(tvTab.id, { windowId: tvWindowId, index: -1 });
+  } catch (e) {
+    // E.g. a page in an incognito window: its tab can't move into the normal TV window.
+    console.debug('[tab2tv] placing failed:', e.message);
+    placing.delete(tvTab.id);
+    closeTvTab(tvTab.id);
+    releaseTv(senderTab.id);
+    return { ok: false, reason: 'placeFailed' };
+  }
+  console.debug('[tab2tv] placed TV tab in', Math.round(performance.now() - t0), 'ms');
 
   // Owner right away (so nothing evicts or releases it before its first picture), but 'shown'
   // only after 'show': until then raiseSession leaves the TV as it is.
   await setSession(senderTab.id, {
     tvTabId: tvTab.id, openerWindowId: senderTab.windowId, displayId: target.id, frameId, shown: false,
   });
+  placing.delete(tvTab.id);
   await takeOverTv(senderTab.id);
   refreshBadge();
   // Physical resolution of the TV (bounds are in scaled points; a Retina-like scale doubles them).
@@ -369,8 +384,6 @@ async function closeTvWindow() {
   if (tvWindowId != null) chrome.windows.remove(tvWindowId).catch(() => {});
 }
 
-// Popup button: end every output (videos return to their pages) and close every TV window,
-// including leftovers without a page.
 // CLEAR: with videos on the TV, end them all (videos return to their pages) and keep the TV window
 // with its placeholder; with only the placeholder left, close the TV window too.
 async function closeAllTvWindows() {
@@ -393,7 +406,7 @@ async function closeAllTvWindows() {
 // window resets openerTabId, so every live TV tab would look like a leftover.
 async function findOrphanTvTabs() {
   const live = new Set(Object.values(await getSessions()).map(s => s.tvTabId));
-  return (await chrome.tabs.query({})).filter(t => tab2tvIsOrphanTvTab(t) && !live.has(t.id));
+  return (await chrome.tabs.query({})).filter(t => tab2tvIsOrphanTvTab(t) && !live.has(t.id) && !placing.has(t.id));
 }
 
 // --- Leftovers after a browser restart ---------------------------------------
@@ -421,7 +434,8 @@ chrome.runtime.onStartup.addListener(() => {
 closeOrphanPopups('worker start');
 chrome.tabs.onCreated.addListener(tab => { if (tab2tvIsOrphanTvTab(tab)) closeTvTab(tab.id); });
 chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
-  if (change.url && tab2tvIsOrphanTvTab(tab)) closeTvTab(tab.id);
+  if (!change.url || !tab2tvIsOrphanTvTab(tab) || placing.has(tabId)) return;
+  getSessions().then(s => { if (!Object.values(s).some(x => x.tvTabId === tabId)) closeTvTab(tabId); });
 });
 
 // --- Messages and triggers ------------------------------------------------

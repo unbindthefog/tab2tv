@@ -20,19 +20,18 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken. Offene Tabs
 **Brave**
 - Menü **Ansicht → „Symbolleiste im Vollbildmodus immer anzeigen“ ausschalten** (⇧⌘F). Sonst bleibt auf dem TV oben eine schmale Adressleiste sichtbar. Die Erweiterung erkennt das und zeigt einen Hinweis.
 
-**Optional (macOS)**
-- Systemeinstellungen → Bedienungshilfen → Anzeige → **„Bewegung reduzieren“**: Der Wechsel zwischen TV-Fenstern (Tabwechsel) wird dann überblendet statt geschoben und wirkt schneller.
+- Einstellungen → Darstellung → **„Abgerundete Ecken in Hauptelementen anzeigen“ ausschalten** (Link in den Optionen). Sonst hat das Bild auf dem TV abgerundete Ecken.
 
 ## Bedienung
 
 - **Automatik** (standardmäßig aus, AUTO im Menü): Auf den Websites in der Automatik-Liste (Standard: nur `youtube.com`) erscheint ein per Klick gestartetes Video nach ca. 1 s im Vollbild auf dem TV. Maßgeblich ist die Website, auf der du bist – ein YouTube-Player eingebettet auf einer anderen Seite startet nur automatisch, wenn diese Seite in der Liste steht. Standardmäßig läuft das Video zusätzlich im Player der Seite weiter (Paralleldarstellung, Ton nur einmal); alternativ ersetzt ein dunkler Platzhalter „Wird auf TV wiedergegeben“ das Bild.
 - **Menü am Erweiterungssymbol** (schlichtes Tastenfeld, hell/dunkel nach System, Statuszeile unter jeder Taste):
-  - **SEND:** Video dieses Tabs auf den TV; leuchtet „ON“, solange der Tab auf dem TV läuft – erneut drücken holt es zurück.
+  - **SEND:** Video dieses Tabs auf den TV; „OK“, wenn ein Video erkannt ist, „ON“, solange der Tab auf dem TV läuft – erneut drücken holt es zurück. Ohne Video öffnet SEND das TV-Fenster mit dem Platzhalter.
   - **AUTO:** Automatik „ON“ (grün) / „OFF“ (rot, Symbol rot mit „AUS“). Aus: Der TV behält sein Video, folgt keinem Tabwechsel und startet nichts automatisch – so kannst du ein Video weiterschauen und in anderen Tabs stöbern. Wieder an: holt sofort das Video des aktuellen Tabs auf den TV.
-  - **CLEAR:** schließt alle TV-Fenster (Anzeige: Anzahl offener TV-Fenster); die Videos kehren in ihre Seiten zurück.
+  - **CLEAR:** beendet alle Ausgaben (Anzeige: Anzahl der Videos auf dem TV), die Videos kehren in ihre Seiten zurück; das TV-Fenster bleibt mit dem Platzhalter „tab2tv“ offen („IDLE“). Erneut drücken schließt es.
   - **OPT:** Einstellungen.
 - Klappt das Öffnen des TV-Fensters ausnahmsweise nicht, erscheint unten rechts auf der Seite ein Hinweis mit Button „Auf TV abspielen“.
-- **Mehrere Tabs:** Der TV zeigt das Video des Tabs, in dem zuletzt Play gedrückt bzw. zu dem gewechselt wurde. Das vorherige TV-Fenster bleibt 30 s im Hintergrund (Zurückwechseln geht sofort) und schließt sich dann; das Video kehrt in seine Seite zurück. Es gibt höchstens zwei TV-Fenster. Die Wartezeit ist in den Optionen einstellbar.
+- **Mehrere Tabs:** Der TV zeigt das Video des Tabs, in dem zuletzt Play gedrückt bzw. zu dem gewechselt wurde. Alle Videos sind Tabs eines einzigen Vollbildfensters auf dem TV, ein Wechsel ist ein Tabwechsel. Das vorherige Video bleibt 30 s im Hintergrund (Zurückwechseln geht sofort) und endet dann; es kehrt in seine Seite zurück. Die Wartezeit ist in den Optionen einstellbar.
 - **Zurückholen:** SEND im Menü. Das Video läuft ohne Unterbrechung in der Seite weiter.
 - **Einstellungen:** im Menü „OPT“ (oder Rechtsklick auf das Symbol → Optionen): Zielbildschirm, Automatik (Website-Liste oder alle Websites), Paralleldarstellung, Hintergrund-Fenster, Verhalten bei Videoende. Unter „Erweitert“: Schwellwerte der Automatik (Mindestdauer/-breite), Bildschirmnamen, Diagnose.
 - **Zielbildschirm:** Standard ist der erste zusätzliche Bildschirm. Ein ausdrücklich gewählter Bildschirm wird nach einer neuen AirPlay-Verbindung wiedererkannt (über Kennung, Name oder Auflösung). Ist er nicht verbunden, gibt die Erweiterung nichts aus. „Bildschirmnamen anzeigen“ (unter „Erweitert“) fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ erscheinen.
@@ -48,7 +47,7 @@ Nach Änderungen am Code: auf der Erweiterungskarte auf ↻ klicken. Offene Tabs
 - `extension/` – die Erweiterung (Manifest V3, kein Build-Schritt).
 - `tools/test-brave.sh` – startet eine isolierte Brave-Instanz mit geladener Erweiterung und DevTools-Port 9333.
 - `tools/cdp.mjs` – minimaler CDP-Client zum Fernsteuern/Prüfen der Testinstanz.
-- `tools/test-multitab.mjs` – Regressionstest für mehrere Tabs/TV-Fenster (Testinstanz mit offener Optionsseite).
+- `tools/test-multitab.mjs` – Regressionstest für mehrere Tabs auf dem TV (Testinstanz mit offener Optionsseite).
 - `tools/test-automode.mjs` – Regressionstest für den Automatik-Schalter im Menü.
 - `tools/testpages/embeds.html` – Testseite mit eingebetteten Playern (`python3 -m http.server 8765 --directory tools/testpages`).
 - `tools/screenshot.mjs` – Screenshot einer Seite der Testinstanz.
