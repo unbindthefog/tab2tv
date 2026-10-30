@@ -1,10 +1,10 @@
-# VideoToTV – Anforderungsspezifikation einer Brave-Erweiterung für Videowiedergabe auf dem TV
+# tab2tv – Anforderungsspezifikation einer Brave-Erweiterung für Videowiedergabe auf dem TV
 
 Oct 5, 2026 · @Jan
 
 ## Ziel und Nutzungsszenario
 
-VideoToTV ist eine Browsererweiterung für Brave, die ein im Browser laufendes Video automatisch im Vollbild auf einem zweiten Bildschirm ausgibt. Die Webseite selbst bleibt dabei vollständig und normal bedienbar auf dem Hauptbildschirm.
+tab2tv ist eine Browsererweiterung für Brave, die ein im Browser laufendes Video automatisch im Vollbild auf einem zweiten Bildschirm ausgibt. Die Webseite selbst bleibt dabei vollständig und normal bedienbar auf dem Hauptbildschirm.
 
 Typisches Setup: MacBook mit macOS, ein Fernseher ist per AirPlay als erweiterter Bildschirm verbunden. Der Nutzer startet zum Beispiel ein YouTube-Video. Das Bild erscheint sofort im Vollbild auf dem TV, während er auf dem MacBook weiter in den Kommentaren liest, in der Seitenleiste stöbert oder den Player bedient.
 
