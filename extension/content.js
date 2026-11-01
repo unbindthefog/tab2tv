@@ -115,7 +115,9 @@
       return v.captureStream();
     } catch (e) {
       log('captureStream failed', e);
-      const drm = v.mediaKeys || /EME/i.test(e.message);
+      // Whole word, case-sensitive: "element" in the cross-origin error ("Cannot capture from
+      // element with cross-origin data") would match /eme/i.
+      const drm = v.mediaKeys || /\bEME\b/.test(e.message);
       toast(drm
         ? 'Dieses Video ist kopiergeschützt (DRM) und kann nicht auf den TV ausgegeben werden.'
         : 'Dieses Video kann nicht auf den TV ausgegeben werden (fremde Herkunft).');
