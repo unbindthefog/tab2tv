@@ -64,7 +64,11 @@ async function takeOverTv(tabId) {
     sendToFrame(id, s, { type: 'stop' });
     closeTv(s);
   }
-  if (prev) sendToFrame(prev[0], prev[1], { type: 'background' });
+  // A moved video's window covers the whole TV (always on top), it can't wait in the background.
+  if (prev?.[1].moved) {
+    await updateSessions(s => { if (s[prev[0]]?.moved) delete s[prev[0]]; });
+    sendToFrame(prev[0], prev[1], { type: 'stop' });
+  } else if (prev) sendToFrame(prev[0], prev[1], { type: 'background' });
   const own = (await getSessions())[tabId];
   if (own) sendToFrame(tabId, own, { type: 'foreground' });
 }
@@ -316,27 +320,36 @@ async function placePopup(senderTab, frameId) {
 }
 
 // PROTOTYPE: a video moved into a picture-in-picture window (see startMoved in content.js). Its
-// session has no TV tab, so SEND, CLEAR and the badge know it, but it doesn't own the TV window.
-// The window can't be sized beyond about 60 % of the screen, but chrome.windows can put it in
-// fullscreen. Chromium allows one such window at a time: the only always-on-top window with a
-// single about:blank tab.
-async function placeMoved(senderTab, frameId) {
+// session has no TV tab; otherwise it is an output like any other: it takes the TV over, SEND,
+// CLEAR and the badge know it. The window can't be sized beyond about 60 % of the screen, but
+// chrome.windows can put it in fullscreen. It shows up as an always-on-top window; the page gave
+// it a title of its own to tell it from other picture-in-picture windows.
+async function placeMoved(senderTab, frameId, title) {
   const target = await findTargetDisplay();
   if (!target) return { ok: false, reason: 'noDisplay' };
   let win = null;
   for (let i = 0; i < 20 && !win; i++) {
     win = (await chrome.windows.getAll({ populate: true }))
-      .find(w => w.alwaysOnTop && w.tabs?.length === 1 && w.tabs[0].url?.startsWith('about:blank'));
+      .find(w => w.alwaysOnTop && w.tabs?.length === 1 && w.tabs[0].title === title);
     if (!win) await new Promise(r => setTimeout(r, 50));
   }
   if (!win) return { ok: false, reason: 'noPopup' };
-  await setSession(senderTab.id, { tvTabId: null, frameId, shown: true, moved: true });
+
+  // Another output of this tab (other frame, or a leftover of this one): end it first, as in placePopup.
+  // (A leftover of this frame gets no 'stop': that would end the new output.)
+  const previous = (await getSessions())[senderTab.id];
+  if (previous) {
+    await updateSessions(s => { if (s[senderTab.id]?.frameId === previous.frameId) delete s[senderTab.id]; });
+    if (previous.frameId !== frameId) sendToFrame(senderTab.id, previous, { type: 'stop' });
+    closeTv(previous);
+  }
+  await setSession(senderTab.id, { tvTabId: null, displayId: target.id, frameId, shown: true, moved: true });
+  await takeOverTv(senderTab.id);
   refreshBadge();
-  // Fullscreen takes the focus: give it back to the page's window, as for the TV window.
-  const focused = await chrome.windows.getLastFocused().catch(() => null);
   await chrome.windows.update(win.id, { left: target.bounds.left + 40, top: target.bounds.top + 40 });
   await chrome.windows.update(win.id, { state: 'fullscreen' });
-  if (focused && focused.id !== win.id) await chrome.windows.update(focused.id, { focused: true }).catch(() => {});
+  // Fullscreen takes the focus: give it back to the page's window, as for the TV window.
+  await chrome.windows.update(senderTab.windowId, { focused: true }).catch(() => {});
   return { ok: true };
 }
 
@@ -399,7 +412,7 @@ async function showCurrentOnTv() {
   if (tvWindowId == null) return;
   const { sessions, tvOwner } = await chrome.storage.session.get({ sessions: {}, tvOwner: null });
   const owner = tvOwner != null && sessions[tvOwner];
-  if (owner && owner.shown !== false) return chrome.tabs.update(owner.tvTabId, { active: true }).catch(() => {});
+  if (owner && owner.shown !== false && owner.tvTabId != null) return chrome.tabs.update(owner.tvTabId, { active: true }).catch(() => {});
   const [idle] = await chrome.tabs.query({ windowId: tvWindowId, url: TV_IDLE_URL });
   if (idle) chrome.tabs.update(idle.id, { active: true }).catch(() => {});
 }
@@ -512,7 +525,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
   }
   if (msg.type === 'moved' && tab) {
-    placeMoved(tab, sender.frameId).then(sendResponse, e => sendResponse({ ok: false, reason: String(e) }));
+    placeMoved(tab, sender.frameId, msg.title).then(sendResponse, e => sendResponse({ ok: false, reason: String(e) }));
     return true;
   }
   if (msg.type === 'raise' && tab) {

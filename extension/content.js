@@ -28,6 +28,7 @@
   const siteHostname = tab2tvSiteHostname(window.top === window, location.hostname, location.ancestorOrigins);
 
   let session = null;          // active output, see startTv()
+  let starting = false;        // a picture-in-picture start is under way (startMoved)
   let lastInteractedVideo = null;
   let toolbarWarned = false;
 
@@ -136,7 +137,7 @@
   }
 
   async function startTv(video) {
-    if (session || !video || !alive()) return;   // e.g. a hint button left from before an update
+    if (session || starting || !video || !alive()) return;   // e.g. a hint button left from before an update
     // Without user activation Brave opens window.open(..., 'popup') as a plain tab instead of a
     // popup window, so ask for a click first (the click itself provides the activation).
     if (!navigator.userActivation.isActive) {
@@ -146,7 +147,7 @@
     const { stream, reason } = capture(video);
     if (!stream) {
       // Can't be copied (DRM, other server): move the video itself into a picture-in-picture window.
-      if ('documentPictureInPicture' in window) startMoved(video);
+      if ('documentPictureInPicture' in window) startMoved(video, reason);
       else explain(reason);
       return;
     }
@@ -168,7 +169,7 @@
     bindVideoEvents(video);
     session.captions = startCaptionMirror(video);
 
-    popup.addEventListener('pagehide', () => stopTv({ reason: 'popup closed' }));
+    popup.addEventListener('pagehide', () => { if (session?.popup === popup) stopTv({ reason: 'popup closed' }); });
     // Also ends the output if this instance was cut off by an extension update: nothing else could
     // manage its TV window any more (the new instance and the service worker don't know it).
     const watch = setInterval(() => {
@@ -209,56 +210,73 @@
   // without reloading it. Brave draws the same video there, so DRM and CORS don't apply; the page
   // keeps its player and controls, its own picture stays empty meanwhile. Chromium's title bar of
   // the window stays visible on the TV, even in fullscreen.
-  async function startMoved(video) {
-    let pip;
+  async function startMoved(video, reason) {
+    starting = true;
+    let pip = null, standIn = null;
     try {
+      // Before the window opens: without a TV the video would jump into it and right back.
+      const { hasTarget } = await chrome.runtime.sendMessage({ type: 'status' });
+      if (!hasTarget) { toast('Kein zweiter Bildschirm verbunden.'); return; }
       pip = await documentPictureInPicture.requestWindow({ width: 960, height: 540 });
+      if (session || !video.isConnected) { pip.close(); return; }
+      const d = pip.document;
+      // Lets the service worker tell this window from any other picture-in-picture window.
+      const title = 'tab2tv ' + Math.random().toString(36).slice(2);
+      d.title = title;
+      const style = d.createElement('style');
+      style.textContent = `
+        html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+        body > video { width: 100% !important; height: 100% !important; object-fit: contain;
+          display: block; position: static !important; transform: none !important; }`;
+      d.head.append(style);
+
+      // Keeps the page layout where the video was (the player around it may depend on its size).
+      ensurePageStyle();
+      const cs = getComputedStyle(video);
+      standIn = document.createElement('div');
+      standIn.className = 'tab2tv-standin';
+      standIn.textContent = 'Wird auf TV wiedergegeben';
+      for (const k of ['position', 'top', 'left', 'right', 'bottom', 'width', 'height']) standIn.style[k] = cs[k];
+      const place = { parent: video.parentNode, next: video.nextSibling };
+      video.before(standIn);
+      d.body.append(video);   // one move, not remove + append: the video must never leave a document
+
+      session = { video, popup: pip, moved: { standIn, ...place }, cleanups: [] };
+      const onEnded = () => { if (settings.onEnded === 'return') stopTv({ reason: 'ended' }); };
+      video.addEventListener('ended', onEnded);
+      session.cleanups.push(() => video.removeEventListener('ended', onEnded));
+      pip.addEventListener('pagehide', () => { if (session?.popup === pip) stopTv({ reason: 'popup closed' }); });
+      const watch = setInterval(() => {
+        if (pip.closed) stopTv({ reason: 'popup closed' });
+        else if (!alive()) stopTv({ reason: 'extension updated' });
+      }, 1000);
+      session.cleanups.push(() => clearInterval(watch));
+      // The service worker moves the window onto the TV in fullscreen.
+      const res = await chrome.runtime.sendMessage({ type: 'moved', title }).catch(() => null);
+      if (session?.popup !== pip) return;
+      if (!res?.ok) {
+        stopTv({ reason: 'place failed' });
+        toast(res?.reason === 'noDisplay' ? 'Kein zweiter Bildschirm verbunden.' : 'Ausgabe auf den TV fehlgeschlagen.');
+      }
     } catch (e) {
-      log('picture-in-picture refused', e);
-      explain(capture(video).reason);
-      return;
-    }
-    const d = pip.document;
-    d.title = 'tab2tv';
-    const style = d.createElement('style');
-    style.textContent = `
-      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-      body > video { width: 100% !important; height: 100% !important; object-fit: contain;
-        display: block; position: static !important; transform: none !important; }`;
-    d.head.append(style);
-
-    // Keeps the page layout where the video was (the player around it may depend on its size).
-    ensurePageStyle();
-    const cs = getComputedStyle(video);
-    const standIn = document.createElement('div');
-    standIn.className = 'tab2tv-standin';
-    standIn.textContent = 'Wird auf TV wiedergegeben';
-    for (const k of ['position', 'top', 'left', 'right', 'bottom', 'width', 'height']) standIn.style[k] = cs[k];
-    video.before(standIn);
-    d.body.append(video);   // one move, not remove + append: the video must never leave a document
-
-    session = { video, popup: pip, moved: { standIn }, cleanups: [] };
-    const onEnded = () => { if (settings.onEnded === 'return') stopTv({ reason: 'ended' }); };
-    video.addEventListener('ended', onEnded);
-    session.cleanups.push(() => video.removeEventListener('ended', onEnded));
-    pip.addEventListener('pagehide', () => stopTv({ reason: 'popup closed' }));
-    const watch = setInterval(() => {
-      if (pip.closed) stopTv({ reason: 'popup closed' });
-      else if (!alive()) stopTv({ reason: 'extension updated' });
-    }, 1000);
-    session.cleanups.push(() => clearInterval(watch));
-    // The service worker moves the window onto the TV in fullscreen.
-    const res = await chrome.runtime.sendMessage({ type: 'moved' }).catch(() => null);
-    if (session?.popup !== pip) return;
-    if (!res?.ok) {
-      stopTv({ reason: 'place failed' });
-      toast(res?.reason === 'noDisplay' ? 'Kein zweiter Bildschirm verbunden.' : 'Ausgabe auf den TV fehlgeschlagen.');
+      log('picture-in-picture failed', e);
+      if (session?.popup === pip && pip) { stopTv({ reason: 'start failed' }); return; }
+      if (standIn?.isConnected && video.ownerDocument !== document) standIn.replaceWith(video);
+      standIn?.remove();
+      pip?.close();
+      explain(reason);
+    } finally {
+      starting = false;
     }
   }
 
   // The video back to its place in the page, before its window closes (closing would take it along).
+  // The page may have dropped the stand-in meanwhile (e.g. re-rendered its player): then back into
+  // the old parent, if that is still there.
   function returnMoved(s) {
-    s.moved.standIn.replaceWith(s.video);
+    const { standIn, parent, next } = s.moved;
+    if (standIn.isConnected) standIn.replaceWith(s.video);
+    else if (parent.isConnected) parent.insertBefore(s.video, next?.parentNode === parent ? next : null);
   }
 
   // Resolves once the video has its first frame (or after timeoutMs, so the TV never stays hidden).
