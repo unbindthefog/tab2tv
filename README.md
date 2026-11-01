@@ -22,9 +22,11 @@ Menü am Erweiterungssymbol:
 
 Wird der TV getrennt, kehrt das Video pausiert in die Seite zurück.
 
+Videos, die sich nicht kopieren lassen (von fremden Servern ohne CORS, vermutlich auch mit Kopierschutz/DRM), schiebt tab2tv selbst in ein Bild-in-Bild-Fenster im Vollbild auf dem TV. Das Bild in der Seite bleibt so lange leer, ihr Player steuert weiter.
+
 ## Grenzen
 
-Kopiergeschützte Videos (DRM) lassen sich nicht ausgeben, Videos von fremden Servern ohne CORS noch nicht.
+Im Bild-in-Bild-Fenster bleibt oben auf dem TV eine schmale Titelleiste des Browsers sichtbar.
 
 ## Entwicklung
 

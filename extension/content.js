@@ -2,6 +2,7 @@
 // Approach: the page opens a same-origin popup, the original <video> is mirrored into it
 // via captureStream(), and the service worker moves the popup fullscreen onto the TV.
 // The original element stays in the page, so the site's own player keeps full control.
+// Videos that can't be copied (DRM, other server without CORS) move instead, see startMoved().
 // Embedded players (cross-origin iframes) are handled by the instance inside that iframe:
 // there the video is same-origin, and the popup is opened from the iframe's origin.
 (() => {
