@@ -29,3 +29,7 @@ Kopiergeschützte Videos (DRM) lassen sich nicht ausgeben, Videos von fremden Se
 ## Entwicklung
 
 `extension/` ist die Erweiterung (Manifest V3, kein Build-Schritt). In `tools/` liegen eine isolierte Brave-Testinstanz (`test-brave.sh`), CDP-Helfer und Tests: `test-unit.mjs` läuft ohne TV, `test-multitab.mjs` und `test-automode.mjs` brauchen den TV. Die Ergebnisse der technischen Erkundung stehen in `docs/erkundung.md`.
+
+## Lizenz
+
+MIT, siehe `LICENSE`. Ausgenommen ist die Schrift Tiny5 in `extension/fonts/tiny5/`, sie steht unter der SIL Open Font License 1.1.
