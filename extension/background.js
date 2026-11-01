@@ -1,11 +1,12 @@
 // tab2tv service worker: display tracking, popup placement, badge state, cleanup.
 importScripts('settings.js');
 
-// tabId -> { tvTabId, openerWindowId, displayId, frameId }, persisted because the worker can be
-// suspended. One session per tab; frameId is the (i)frame whose video is on the TV, tvTabId its
-// tab in the shared TV window.
+// tabId -> { tvTabId, openerWindowId, displayId, frameId, shown, moved }, persisted because the
+// worker can be suspended. One session per tab; frameId is the (i)frame whose video is on the TV,
+// tvTabId its tab in the shared TV window. A moved video (moved: true, see placeMoved) has its own
+// picture-in-picture window instead (tvTabId null).
 //
-// PROTOTYPE (feature/tv-window): all TV outputs are tabs of ONE fullscreen window on the TV.
+// All TV outputs are tabs of ONE fullscreen window on the TV.
 // Switching between videos activates another tab in it instead of focusing another fullscreen
 // window, so macOS doesn't switch Spaces (no slide animation). The page opens its TV view as a
 // normal tab (window.open without 'popup'); tabs can only move between normal windows.
@@ -45,10 +46,9 @@ function removeSessionsWhere(pred) {
   });
 }
 
-// --- TV ownership: at most two TV windows ----------------------------------
-// Each TV window is its own macOS Space. The owner's window is shown; the previous owner stays
-// in the background for settings.backgroundCloseSec (so switching back is instant), any further
-// window is closed right away.
+// --- TV ownership: at most two outputs -------------------------------------
+// The owner's TV tab is shown; the previous owner stays in the background for
+// settings.backgroundCloseSec (so switching back is instant), any further output ends right away.
 
 async function takeOverTv(tabId) {
   const { prev, evicted } = await updateState(state => {
@@ -319,7 +319,7 @@ async function placePopup(senderTab, frameId) {
   return { ok: true, display: { width: target.bounds.width, height: target.bounds.height, nativeHeight } };
 }
 
-// PROTOTYPE: a video moved into a picture-in-picture window (see startMoved in content.js). Its
+// A video moved into a picture-in-picture window (see startMoved in content.js). Its
 // session has no TV tab; otherwise it is an output like any other: it takes the TV over, SEND,
 // CLEAR and the badge know it. The window can't be sized beyond about 60 % of the screen, but
 // chrome.windows can put it in fullscreen. It shows up as an always-on-top window; the page gave
@@ -360,7 +360,7 @@ async function raiseSession(tabId) {
   if (!s) return;
   const t0 = performance.now();
   if (s.shown === false) return;   // no picture yet; 'show' brings it to the front
-  if (s.tvTabId == null) return;   // moved video (picture-in-picture window): nothing to raise
+  if (s.moved) return;   // picture-in-picture window, always the owner: nothing to raise
   await chrome.tabs.update(s.tvTabId, { active: true });
   await takeOverTv(+tabId);
   console.debug('[tab2tv] raised popup of tab', tabId, 'in', Math.round(performance.now() - t0), 'ms');
@@ -412,7 +412,7 @@ async function showCurrentOnTv() {
   if (tvWindowId == null) return;
   const { sessions, tvOwner } = await chrome.storage.session.get({ sessions: {}, tvOwner: null });
   const owner = tvOwner != null && sessions[tvOwner];
-  if (owner && owner.shown !== false && owner.tvTabId != null) return chrome.tabs.update(owner.tvTabId, { active: true }).catch(() => {});
+  if (owner && owner.shown !== false && !owner.moved) return chrome.tabs.update(owner.tvTabId, { active: true }).catch(() => {});
   const [idle] = await chrome.tabs.query({ windowId: tvWindowId, url: TV_IDLE_URL });
   if (idle) chrome.tabs.update(idle.id, { active: true }).catch(() => {});
 }
@@ -524,7 +524,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (tvOwner === tab.id) await chrome.tabs.update(tvTabId, { active: true }).catch(() => {});
     });
   }
-  if (msg.type === 'moved' && tab) {
+  if (msg.type === 'moved' && tab && typeof msg.title === 'string' && msg.title.startsWith('tab2tv ')) {
     placeMoved(tab, sender.frameId, msg.title).then(sendResponse, e => sendResponse({ ok: false, reason: String(e) }));
     return true;
   }

@@ -89,7 +89,8 @@
     const v = e.target;
     if (!(v instanceof HTMLVideoElement) || !alive()) return;
     if (session) {
-      // Another big video started while on TV (e.g. site swapped elements): follow it.
+      // Another big video started while on TV (e.g. site swapped elements): follow it. Not for a
+      // moved video: the new element couldn't be copied either, SEND brings it over.
       if (!session.moved && v !== session.video && !autoRejectReason(v) && videoArea(v) >= videoArea(session.video)) rebind(v);
       // Resuming here: bring this tab's TV window to the front (another tab may own the TV now).
       chrome.runtime.sendMessage({ type: 'raise' }).catch(() => {});
@@ -148,13 +149,15 @@
     const { stream, reason } = capture(video);
     if (!stream) {
       // Can't be copied (DRM, other server): move the video itself into a picture-in-picture window.
-      if ('documentPictureInPicture' in window) startMoved(video, reason);
-      else explain(reason);
+      // Document Picture-in-Picture exists only for the top-level frame, not for embedded players.
+      if ('documentPictureInPicture' in window && window.top === window) {
+        startMoved(video).catch(e => log('move failed', e));
+      } else explain(reason);
       return;
     }
 
     // Must happen while the user activation is still valid.
-    // PROTOTYPE: a normal tab (no 'popup' feature); the service worker moves it into the TV window.
+    // A normal tab (no 'popup' feature): the service worker moves it into the TV window.
     const popup = window.open(TAB2TV_POPUP_URL, 'tab2tv_' + Date.now());
     if (!popup) {
       toast('Popup wurde blockiert.', [{ label: 'Auf TV abspielen', action: () => startTv(video) }], 10000);
@@ -206,29 +209,35 @@
     }, 2000);
   }
 
-  // PROTOTYPE (feature/move-video): for videos that can't be copied. The element itself moves into
+  // For videos that can't be copied. The element itself moves into
   // a Document Picture-in-Picture window, the only window Chromium moves a playing video into
   // without reloading it. Brave draws the same video there, so DRM and CORS don't apply; the page
   // keeps its player and controls, its own picture stays empty meanwhile. Chromium's title bar of
   // the window stays visible on the TV, even in fullscreen.
-  async function startMoved(video, reason) {
+  async function startMoved(video) {
     starting = true;
     let pip = null, standIn = null;
     try {
       // Before the window opens: without a TV the video would jump into it and right back.
-      const { hasTarget } = await chrome.runtime.sendMessage({ type: 'status' });
-      if (!hasTarget) { toast('Kein zweiter Bildschirm verbunden.'); return; }
+      const status = await chrome.runtime.sendMessage({ type: 'status' }).catch(() => null);
+      if (!status) { toast('Ausgabe auf den TV fehlgeschlagen.'); return; }
+      if (!status.hasTarget) { toast('Kein zweiter Bildschirm verbunden.'); return; }
       pip = await documentPictureInPicture.requestWindow({ width: 960, height: 540 });
-      if (session || !video.isConnected) { pip.close(); return; }
+      if (session || !video.isConnected) {
+        pip.close();
+        if (!session) toast('Ausgabe auf den TV fehlgeschlagen.');
+        return;
+      }
       const d = pip.document;
       // Lets the service worker tell this window from any other picture-in-picture window.
       const title = 'tab2tv ' + Math.random().toString(36).slice(2);
       d.title = title;
       const style = d.createElement('style');
       style.textContent = `
-        html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+        html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
         body > video { width: 100% !important; height: 100% !important; object-fit: contain;
-          display: block; position: static !important; transform: none !important; }`;
+          display: block; position: static !important; transform: none !important; }
+        body.black > video { visibility: hidden !important; }`;
       d.head.append(style);
 
       // Keeps the page layout where the video was (the player around it may depend on its size).
@@ -239,13 +248,32 @@
       standIn.textContent = 'Wird auf TV wiedergegeben';
       for (const k of ['position', 'top', 'left', 'right', 'bottom', 'width', 'height']) standIn.style[k] = cs[k];
       const place = { parent: video.parentNode, next: video.nextSibling };
+      // A video filling its player keeps following its size (window resized, theater mode). Only a
+      // positioned video leaves the player's size alone; otherwise its height may come from the
+      // video, and the stand-in keeps the video's aspect ratio instead.
+      const fillsWidth = video.offsetWidth === place.parent.clientWidth;
+      if (fillsWidth && video.offsetHeight === place.parent.clientHeight && /absolute|fixed/.test(cs.position)) {
+        standIn.style.width = standIn.style.height = '100%';
+      } else if (fillsWidth && video.offsetHeight) {
+        standIn.style.width = '100%';
+        standIn.style.height = 'auto';
+        standIn.style.aspectRatio = video.offsetWidth + ' / ' + video.offsetHeight;
+      }
       video.before(standIn);
       d.body.append(video);   // one move, not remove + append: the video must never leave a document
 
       session = { video, popup: pip, moved: { standIn, ...place }, cleanups: [] };
-      const onEnded = () => { if (settings.onEnded === 'return') stopTv({ reason: 'ended' }); };
+      const onEnded = () => {
+        if (settings.onEnded === 'return') stopTv({ reason: 'ended' });
+        else if (settings.onEnded === 'black') d.body.classList.add('black');
+      };
+      const onLoaded = () => d.body.classList.remove('black');   // next video on the same element
       video.addEventListener('ended', onEnded);
-      session.cleanups.push(() => video.removeEventListener('ended', onEnded));
+      video.addEventListener('loadeddata', onLoaded);
+      session.cleanups.push(() => {
+        video.removeEventListener('ended', onEnded);
+        video.removeEventListener('loadeddata', onLoaded);
+      });
       pip.addEventListener('pagehide', () => { if (session?.popup === pip) stopTv({ reason: 'popup closed' }); });
       const watch = setInterval(() => {
         if (pip.closed) stopTv({ reason: 'popup closed' });
@@ -261,11 +289,19 @@
       }
     } catch (e) {
       log('picture-in-picture failed', e);
-      if (session?.popup === pip && pip) { stopTv({ reason: 'start failed' }); return; }
-      if (standIn?.isConnected && video.ownerDocument !== document) standIn.replaceWith(video);
-      standIn?.remove();
-      pip?.close();
-      explain(reason);
+      try {
+        if (pip && session?.popup === pip) stopTv({ reason: 'start failed' });
+        else {
+          if (standIn?.isConnected && video.ownerDocument !== document) standIn.replaceWith(video);
+          standIn?.remove();
+          pip?.close();
+        }
+      } finally {
+        // The window was refused for lack of a fresh click (e.g. the automatic start took too long).
+        if (!pip && e?.name === 'NotAllowedError') {
+          toast('Video auf dem TV abspielen?', [{ label: 'Auf TV abspielen', action: () => startTv(video) }], 10000);
+        } else toast('Ausgabe auf den TV fehlgeschlagen.');
+      }
     } finally {
       starting = false;
     }
@@ -273,7 +309,8 @@
 
   // The video back to its place in the page, before its window closes (closing would take it along).
   // The page may have dropped the stand-in meanwhile (e.g. re-rendered its player): then back into
-  // the old parent, if that is still there.
+  // the old parent, if that is still there. If that is gone too, the page has dropped its player,
+  // and the video goes with the window.
   function returnMoved(s) {
     const { standIn, parent, next } = s.moved;
     if (standIn.isConnected) standIn.replaceWith(s.video);
