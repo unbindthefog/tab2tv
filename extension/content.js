@@ -88,7 +88,7 @@
     if (!(v instanceof HTMLVideoElement) || !alive()) return;
     if (session) {
       // Another big video started while on TV (e.g. site swapped elements): follow it.
-      if (v !== session.video && !autoRejectReason(v) && videoArea(v) >= videoArea(session.video)) rebind(v);
+      if (!session.moved && v !== session.video && !autoRejectReason(v) && videoArea(v) >= videoArea(session.video)) rebind(v);
       // Resuming here: bring this tab's TV window to the front (another tab may own the TV now).
       chrome.runtime.sendMessage({ type: 'raise' }).catch(() => {});
       return;
@@ -110,19 +110,29 @@
   // ---------------------------------------------------------------------------
   // Output
 
-  function captureOrExplain(v) {
+  // The copy of the picture, or null with the reason: 'drm' or 'origin' (a video from another
+  // server without CORS).
+  function capture(v) {
     try {
-      return v.captureStream();
+      return { stream: v.captureStream() };
     } catch (e) {
       log('captureStream failed', e);
       // Whole word, case-sensitive: "element" in the cross-origin error ("Cannot capture from
       // element with cross-origin data") would match /eme/i.
-      const drm = v.mediaKeys || /\bEME\b/.test(e.message);
-      toast(drm
-        ? 'Dieses Video ist kopiergeschützt (DRM) und kann nicht auf den TV ausgegeben werden.'
-        : 'Dieses Video kann nicht auf den TV ausgegeben werden (fremde Herkunft).');
-      return null;
+      return { reason: v.mediaKeys || /\bEME\b/.test(e.message) ? 'drm' : 'origin' };
     }
+  }
+
+  function explain(reason) {
+    toast(reason === 'drm'
+      ? 'Dieses Video ist kopiergeschützt (DRM) und kann nicht auf den TV ausgegeben werden.'
+      : 'Dieses Video kann nicht auf den TV ausgegeben werden (fremde Herkunft).');
+  }
+
+  function captureOrExplain(v) {
+    const { stream, reason } = capture(v);
+    if (!stream) explain(reason);
+    return stream || null;
   }
 
   async function startTv(video) {
@@ -133,8 +143,13 @@
       toast('Video auf dem TV abspielen?', [{ label: 'Auf TV abspielen', action: () => startTv(video) }], 10000);
       return;
     }
-    const stream = captureOrExplain(video);
-    if (!stream) return;
+    const { stream, reason } = capture(video);
+    if (!stream) {
+      // Can't be copied (DRM, other server): move the video itself into a picture-in-picture window.
+      if ('documentPictureInPicture' in window) startMoved(video);
+      else explain(reason);
+      return;
+    }
 
     // Must happen while the user activation is still valid.
     // PROTOTYPE: a normal tab (no 'popup' feature); the service worker moves it into the TV window.
@@ -187,6 +202,63 @@
         toast('Auf dem TV ist oben noch eine Leiste sichtbar. Abhilfe in Brave: Menü „Ansicht“ → „Symbolleiste im Vollbildmodus immer anzeigen“ ausschalten (⇧⌘F).', [], 15000);
       }
     }, 2000);
+  }
+
+  // PROTOTYPE (feature/move-video): for videos that can't be copied. The element itself moves into
+  // a Document Picture-in-Picture window, the only window Chromium moves a playing video into
+  // without reloading it. Brave draws the same video there, so DRM and CORS don't apply; the page
+  // keeps its player and controls, its own picture stays empty meanwhile. Chromium's title bar of
+  // the window stays visible on the TV, even in fullscreen.
+  async function startMoved(video) {
+    let pip;
+    try {
+      pip = await documentPictureInPicture.requestWindow({ width: 960, height: 540 });
+    } catch (e) {
+      log('picture-in-picture refused', e);
+      explain(capture(video).reason);
+      return;
+    }
+    const d = pip.document;
+    d.title = 'tab2tv';
+    const style = d.createElement('style');
+    style.textContent = `
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      body > video { width: 100% !important; height: 100% !important; object-fit: contain;
+        display: block; position: static !important; transform: none !important; }`;
+    d.head.append(style);
+
+    // Keeps the page layout where the video was (the player around it may depend on its size).
+    ensurePageStyle();
+    const cs = getComputedStyle(video);
+    const standIn = document.createElement('div');
+    standIn.className = 'tab2tv-standin';
+    standIn.textContent = 'Wird auf TV wiedergegeben';
+    for (const k of ['position', 'top', 'left', 'right', 'bottom', 'width', 'height']) standIn.style[k] = cs[k];
+    video.before(standIn);
+    d.body.append(video);   // one move, not remove + append: the video must never leave a document
+
+    session = { video, popup: pip, moved: { standIn }, cleanups: [] };
+    const onEnded = () => { if (settings.onEnded === 'return') stopTv({ reason: 'ended' }); };
+    video.addEventListener('ended', onEnded);
+    session.cleanups.push(() => video.removeEventListener('ended', onEnded));
+    pip.addEventListener('pagehide', () => stopTv({ reason: 'popup closed' }));
+    const watch = setInterval(() => {
+      if (pip.closed) stopTv({ reason: 'popup closed' });
+      else if (!alive()) stopTv({ reason: 'extension updated' });
+    }, 1000);
+    session.cleanups.push(() => clearInterval(watch));
+    // The service worker moves the window onto the TV in fullscreen.
+    const res = await chrome.runtime.sendMessage({ type: 'moved' }).catch(() => null);
+    if (session?.popup !== pip) return;
+    if (!res?.ok) {
+      stopTv({ reason: 'place failed' });
+      toast(res?.reason === 'noDisplay' ? 'Kein zweiter Bildschirm verbunden.' : 'Ausgabe auf den TV fehlgeschlagen.');
+    }
+  }
+
+  // The video back to its place in the page, before its window closes (closing would take it along).
+  function returnMoved(s) {
+    s.moved.standIn.replaceWith(s.video);
   }
 
   // Resolves once the video has its first frame (or after timeoutMs, so the TV never stays hidden).
@@ -263,6 +335,9 @@
     log('stop:', reason);
     const s = session;
     session = null;
+    if (s.moved) {
+      try { returnMoved(s); } catch (e) { log('returning the video failed', e); }
+    }
     // TV window first: it must close even if a later cleanup step throws (nothing else would close it).
     if (!s.popup.closed) s.popup.close();
     clearTimeout(s.backgroundTimer);
@@ -337,6 +412,8 @@
     pageStyle = document.createElement('style');
     pageStyle.textContent = `
       video[data-tab2tv-hidden] { opacity: 0 !important; }
+      .tab2tv-standin { display: flex; align-items: center; justify-content: center;
+        background: #111; color: #ddd; font: 15px/1.4 system-ui, sans-serif; box-sizing: border-box; }
       .tab2tv-placeholder { position: absolute; z-index: 2147483000; display: flex;
         align-items: center; justify-content: center; background: #111; color: #ddd;
         font: 15px/1.4 system-ui, sans-serif; pointer-events: none; box-sizing: border-box; }`;

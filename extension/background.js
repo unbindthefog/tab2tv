@@ -315,6 +315,31 @@ async function placePopup(senderTab, frameId) {
   return { ok: true, display: { width: target.bounds.width, height: target.bounds.height, nativeHeight } };
 }
 
+// PROTOTYPE: a video moved into a picture-in-picture window (see startMoved in content.js). Its
+// session has no TV tab, so SEND, CLEAR and the badge know it, but it doesn't own the TV window.
+// The window can't be sized beyond about 60 % of the screen, but chrome.windows can put it in
+// fullscreen. Chromium allows one such window at a time: the only always-on-top window with a
+// single about:blank tab.
+async function placeMoved(senderTab, frameId) {
+  const target = await findTargetDisplay();
+  if (!target) return { ok: false, reason: 'noDisplay' };
+  let win = null;
+  for (let i = 0; i < 20 && !win; i++) {
+    win = (await chrome.windows.getAll({ populate: true }))
+      .find(w => w.alwaysOnTop && w.tabs?.length === 1 && w.tabs[0].url?.startsWith('about:blank'));
+    if (!win) await new Promise(r => setTimeout(r, 50));
+  }
+  if (!win) return { ok: false, reason: 'noPopup' };
+  await setSession(senderTab.id, { tvTabId: null, frameId, shown: true, moved: true });
+  refreshBadge();
+  // Fullscreen takes the focus: give it back to the page's window, as for the TV window.
+  const focused = await chrome.windows.getLastFocused().catch(() => null);
+  await chrome.windows.update(win.id, { left: target.bounds.left + 40, top: target.bounds.top + 40 });
+  await chrome.windows.update(win.id, { state: 'fullscreen' });
+  if (focused && focused.id !== win.id) await chrome.windows.update(focused.id, { focused: true }).catch(() => {});
+  return { ok: true };
+}
+
 // All TV tabs share one fullscreen window: showing another video is a tab switch there, no
 // window focus and no Space change.
 async function raiseSession(tabId) {
@@ -322,6 +347,7 @@ async function raiseSession(tabId) {
   if (!s) return;
   const t0 = performance.now();
   if (s.shown === false) return;   // no picture yet; 'show' brings it to the front
+  if (s.tvTabId == null) return;   // moved video (picture-in-picture window): nothing to raise
   await chrome.tabs.update(s.tvTabId, { active: true });
   await takeOverTv(+tabId);
   console.debug('[tab2tv] raised popup of tab', tabId, 'in', Math.round(performance.now() - t0), 'ms');
@@ -484,6 +510,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const { tvOwner } = await chrome.storage.session.get({ tvOwner: null });
       if (tvOwner === tab.id) await chrome.tabs.update(tvTabId, { active: true }).catch(() => {});
     });
+  }
+  if (msg.type === 'moved' && tab) {
+    placeMoved(tab, sender.frameId).then(sendResponse, e => sendResponse({ ok: false, reason: String(e) }));
+    return true;
   }
   if (msg.type === 'raise' && tab) {
     // Play in a tab with a TV window: it takes the TV over, unless the automatic mode is off.
