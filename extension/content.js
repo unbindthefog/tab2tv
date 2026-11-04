@@ -421,6 +421,17 @@
   }
   // Called by the service worker's probe (chrome.scripting.executeScript runs in this isolated world).
   globalThis.tab2tvCandidateScore = candidateScore;
+  // For the popup's status dot: is this frame's video copied to the TV (true), moved (false: DRM,
+  // no CORS) or not sendable at all (null: can't be copied in an embedded player, see startTv)?
+  // A trial copy, stopped right away; for a video already on the TV, how it got there.
+  globalThis.tab2tvCopyable = () => {
+    if (session) return !session.moved;
+    const v = pickMainVideo();
+    if (!v) return true;
+    const { stream } = capture(v);
+    stream?.getTracks().forEach(t => t.stop());
+    return stream ? true : window.top === window && 'documentPictureInPicture' in window ? false : null;
+  };
   // Title of this frame's video for the popup: the page's media session (set by most players, e.g.
   // YouTube), else the document title without a " - YouTube" suffix.
   globalThis.tab2tvVideoTitle = () => {

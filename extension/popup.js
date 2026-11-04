@@ -1,6 +1,7 @@
 // Popup of the toolbar icon: keys SEND (this tab to TV / back; message 'toggleTab'), CLEAR (close
-// all TV windows), AUTO (automatic mode), OPT (options). State is shown only in the keys' lamp
-// lines; a problem appears in red in the lamp of the key that was pressed.
+// all TV windows), AUTO (automatic mode), OPT (options). Above them a status line with the video
+// title; state is shown in the keys' lamp lines; a problem appears in red in the lamp of the key that
+// was pressed.
 const $ = id => document.getElementById(id);
 
 // ?tabId= lets tests open the popup as a normal tab for a given page tab.
@@ -9,7 +10,7 @@ const testTabId = +new URLSearchParams(location.search).get('tabId') || null;
 let tab = null;
 let autoMode = false;
 let onTv = false;
-let videoFound = false;   // the tab has a video SEND can send (see showTitle)
+let videoFound = false;   // the tab has a video SEND can send (see showStatus)
 let busy = false;   // a button action is running
 let problem = null; // { key, code }: short code (e.g. NO VIDEO) under the key that failed, until the next click
 
@@ -119,15 +120,30 @@ $('options').addEventListener('click', () => {
   if (!testTabId) window.close();
 });
 
-// Title of the video SEND would send, or of the one already on the TV, under the SEND legend; a
-// sendable video also lights SEND's lamp with OK.
-// A separate probe (display only, no user activation needed); frames without the title hook (a
-// content script from before an update) fall back to the tab title for the top frame.
-async function showTitle() {
+// Status line: the video SEND would send, or the one already on the TV, with a dot for how it gets
+// there (green: copied, yellow: moved into a picture-in-picture window, grey: no video, or one that
+// can't be sent). Without a video it names the page's host. A sendable video also lights SEND's lamp with OK.
+// A separate probe (display only, no user activation needed); frames without the hooks (a content
+// script from before an update) fall back to the tab title for the top frame and count as copyable.
+const DOT_TIPS = { copy: 'Video wird auf den TV kopiert', move: 'Video wird ins Bild-in-Bild-Fenster auf dem TV verschoben' };
+
+function setStatus(kind, text) {
+  $('dot').className = 'dot' + (kind ? ' ' + kind : '');
+  $('dot').title = DOT_TIPS[kind] || 'Kein sendbares Video';
+  $('title').textContent = text;
+  $('title').title = text;
+  $('title').className = kind ? '' : 'none';
+}
+
+async function showStatus() {
+  let host = '';
+  try { host = /^https?:$/.test(new URL(tab.url).protocol) ? new URL(tab.url).hostname : ''; } catch {}
+  setStatus('', host || tab.title || '');
   const [results, { sessions }] = await Promise.all([
     chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
-      func: () => ({ score: globalThis.tab2tvCandidateScore?.() ?? 0, title: globalThis.tab2tvVideoTitle?.() ?? null }),
+      func: () => ({ score: globalThis.tab2tvCandidateScore?.() ?? 0, title: globalThis.tab2tvVideoTitle?.() ?? null,
+        copyable: globalThis.tab2tvCopyable?.() ?? true }),
     }).catch(() => null),
     chrome.storage.session.get({ sessions: {} }),
   ]);
@@ -136,8 +152,11 @@ async function showTitle() {
     ? results?.find(r => r.frameId === (session.frameId ?? 0))
     : results?.filter(r => r.result?.score > 0).sort((a, b) => b.result.score - a.result.score)[0];
   if (!pick) return;
-  $('sendTitle').textContent = pick.result?.title || (pick.frameId === 0 ? tab.title : '') || '';
-  videoFound = !session;
+  const title = pick.result?.title || (pick.frameId === 0 ? tab.title : '') || host;
+  const copyable = pick.result?.copyable;
+  const kind = copyable === null ? '' : copyable === false ? 'move' : 'copy';
+  setStatus(kind, title);
+  videoFound = !session && !!kind;
   if (!busy) render();
 }
 
@@ -145,7 +164,7 @@ async function showTitle() {
   tab = testTabId ? await chrome.tabs.get(testTabId)
     : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
   render();
-  if (tab) showTitle();
+  if (tab) showStatus();
 })();
 
 // Footer line, as in Jan's other projects: "dev · v0.36 · 1a2b3c4". The version is the manifest's
