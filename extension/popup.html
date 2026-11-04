@@ -3,52 +3,21 @@
 <head>
 <meta charset="utf-8">
 <title>tab2tv</title>
+<link rel="stylesheet" href="style.css">
 <style>
-  /* Minimal panel: flat square keys (1:1, sharp corners), mono all-caps legends, one colored status line per key.
-     Light/dark follows the system. */
-  :root { color-scheme: light dark; --mono: ui-monospace, "SF Mono", Menlo, monospace;
-    --bg: #f4f4f5; --text: #6b6b70; --strong: #2a2a2e; --key: #ffffff; --key-hover: #ececef;
-    --key-active: #e2e2e6; --border: #c9c9ce; --disabled: #a5a5ab;
-    --on: #157a2c; --off: #c92a2a; --info: #7d5d00; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #1c1c1d; --text: #dbdbdb; --strong: #e6e6e6; --key: #39393b; --key-hover: #444447;
-      --key-active: #2b2b2f; --border: #4a4a4d; --disabled: #85858b;
-      --on: #3ccf55; --off: #ff7a7a; --info: #e2c048; }
-  }
+  /* Palette, keys, lamps, footer and the Tiny5 font: style.css. */
   body { font: 9px/1.4 var(--mono); width: 173px; margin: 0; padding: 8px; color: var(--text); background: var(--bg); }
-  .panel { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-  .key { font: 600 10px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase;
-    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-    color: var(--strong); background: var(--key); border: 1px solid var(--border); border-radius: 0; cursor: pointer; }
-  .key:hover:not(:disabled) { background: var(--key-hover); }
-  .key:active:not(:disabled) { background: var(--key-active); }
-  .key:disabled { cursor: default; color: var(--disabled); }
-  .lamp { font-size: 8px; letter-spacing: .08em; }
-  .lamp:empty { display: none; }   /* legend alone stays vertically centered */
-  .lamp.on { color: var(--on); }
-  .lamp.off { color: var(--off); }
-  .lamp.info { color: var(--info); }
-  /* Tiny5 (fonts/tiny5, OFL): title of the video under SEND. Pixel font with 8 pixels per em
-     (128 of 1024 units each): 8px draws it 1:1, on a Retina display one font pixel = 2×2 screen
-     pixels. Single weight: no synthesized bold. */
-  @font-face { font-family: "Tiny5"; font-display: block; src: url(fonts/tiny5/Tiny5-latin.woff2) format("woff2");
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-  @font-face { font-family: "Tiny5"; font-display: block; src: url(fonts/tiny5/Tiny5-latin-ext.woff2) format("woff2");
-    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
-  /* Centered in the lower quarter, outside the flex flow: legend and lamp stay centered whether a
-     title is shown or not. Whole pixels only, so the pixel font never lands on a half pixel: the
-     key's inner box is 82 px (84 minus the border); the band starts at 58 px, below legend and lamp, and
-     with a 10 px line height one line (10) or two (20) center with whole-pixel margins (5 or 0). */
-  .key { position: relative; }
+  /* Video title under SEND, centered in the lower quarter, outside the flex flow: legend and lamp
+     stay centered whether a title is shown or not. Whole pixels only, so the pixel font never lands
+     on a half pixel: the key's inner box is 82 px (84 minus the border); the band starts at 58 px,
+     below legend and lamp, and with a 10 px line height one line (10) or two (20) center with
+     whole-pixel margins (5 or 0). Tiny5 at 8px draws 1:1. */
   .title { position: absolute; left: 0; right: 0; top: 58px; height: 20px; padding: 0 5px; box-sizing: border-box;
     display: flex; align-items: center; justify-content: center; }
   .title:has(> span:empty) { display: none; }
   .title > span { font: 400 8px/10px "Tiny5", var(--mono); font-synthesis: none; letter-spacing: 0; text-transform: none;
     color: var(--disabled); overflow: hidden; word-break: break-word;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  footer { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin: 8px 2px 0; }
-  h1 { font: 600 9px var(--mono); letter-spacing: .1em; color: var(--text); margin: 0; }
-  #version { font: 8px var(--mono); color: var(--disabled); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
@@ -62,7 +31,7 @@
   <button class="key" id="options" type="button" title="Einstellungen">OPT<span class="lamp"></span></button>
   <button class="key" id="auto" type="button" title="Automatik an/aus">AUTO<span class="lamp" id="autoLamp"></span></button>
 </div>
-<footer><h1>tab2tv</h1><span id="version"></span></footer>
+<footer class="footer"><h1>tab2tv</h1><span class="version" id="version"></span></footer>
 <!-- Branch and hash, written by .git/hooks/post-commit (gitignored, may be missing). -->
 <script src="version.js"></script>
 <script src="settings.js"></script>

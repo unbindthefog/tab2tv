@@ -30,7 +30,7 @@ Im Bild-in-Bild-Fenster bleibt oben auf dem TV eine schmale Titelleiste des Brow
 
 ## Entwicklung
 
-`extension/` ist die Erweiterung (Manifest V3, kein Build-Schritt). In `tools/` liegen eine isolierte Brave-Testinstanz (`test-brave.sh`), CDP-Helfer und Tests: `test-unit.mjs` läuft ohne TV, `test-multitab.mjs` und `test-automode.mjs` brauchen den TV. Die Ergebnisse der technischen Erkundung stehen in `docs/erkundung.md`.
+`extension/` ist die Erweiterung (Manifest V3, kein Build-Schritt); die gemeinsame Gestaltung von Popup, Einstellungen und TV-Platzhalter (Farben, Tasten, Lampen, Schrift) steht in `extension/style.css`. In `tools/` liegen eine isolierte Brave-Testinstanz (`test-brave.sh`), CDP-Helfer und Tests: `test-unit.mjs` läuft ohne TV, `test-multitab.mjs` und `test-automode.mjs` brauchen den TV. Die Ergebnisse der technischen Erkundung stehen in `docs/erkundung.md`.
 
 ## Lizenz
 
