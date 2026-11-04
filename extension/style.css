@@ -6,7 +6,8 @@
 /* ---- Palette. Light/dark follows the system. ---- */
 :root { color-scheme: light dark; --mono: ui-monospace, "SF Mono", Menlo, monospace;
   --bg: #f4f4f5;          /* page */
-  --text: #6b6b70;        /* body text, secondary text */
+  --text: #6b6b70;        /* body text */
+  --muted: #6b6b70;       /* secondary text (hints): dimmer than --strong in both modes, >= 4.5:1 on a block */
   --strong: #2a2a2e;      /* key legends, primary text */
   --key: #ffffff;         /* key face, settings block */
   --key-hover: #ececef;
@@ -20,7 +21,7 @@
   --screen-bg: #000000;
   --screen-text: #3a3a3c; }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #1c1c1d; --text: #dbdbdb; --strong: #e6e6e6; --key: #39393b; --key-hover: #444447;
+  :root { --bg: #1c1c1d; --text: #dbdbdb; --muted: #a4a4a9; --strong: #e6e6e6; --key: #39393b; --key-hover: #444447;
     --key-active: #2b2b2f; --border: #4a4a4d; --disabled: #85858b;
     --on: #3ccf55; --off: #ff7a7a; --info: #e2c048; }
 }
@@ -50,7 +51,7 @@
 /* ---- Settings page (body class "settings"): fieldsets, hints, a collapsible "advanced" block. ---- */
 .settings fieldset { border: 1px solid var(--border); border-radius: 8px; margin: 0 0 16px; padding: 12px 16px; background: var(--key); }
 .settings label { display: block; margin: 6px 0; }
-.hint { color: var(--text); font-size: 13px; margin: 6px 0; }
+.hint { color: var(--muted); font-size: 13px; margin: 6px 0; }
 details.advanced { border: 1px solid var(--border); border-radius: 8px; margin: 0 0 16px; padding: 8px 16px; background: var(--key); }
 details.advanced > summary { cursor: pointer; font-weight: 600; }
 details.advanced h3 { font-size: 14px; margin: 14px 0 4px; }
