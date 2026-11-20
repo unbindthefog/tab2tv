@@ -16,7 +16,10 @@ const storageLocal = {
   async set(obj) { Object.assign(store, obj); },
   async remove(keys) { for (const k of [].concat(keys)) delete store[k]; },
 };
-const ctx = vm.createContext({ chrome: { storage: { local: storageLocal } }, URL });
+// chrome.i18n from the English messages (default_locale), placeholders not needed here.
+const messages = JSON.parse(readFileSync(new URL('../extension/_locales/en/messages.json', import.meta.url)));
+const i18n = { getMessage: key => messages[key]?.message ?? '' };
+const ctx = vm.createContext({ chrome: { storage: { local: storageLocal }, i18n }, URL });
 vm.runInContext(readFileSync(new URL('../extension/settings.js', import.meta.url), 'utf8') +
   '\n;globalThis.api = { tab2tvPickTarget, tab2tvSiteMatches, tab2tvNormalizeSite, tab2tvDisplayLabel, tab2tvSiteHostname, tab2tvIsUsableTarget, tab2tvMatchTarget, tab2tvIsOrphanTvTab, tab2tvMigrateSettings };', ctx);
 const { tab2tvPickTarget: pick, tab2tvSiteMatches: matches, tab2tvNormalizeSite: norm, tab2tvDisplayLabel: label,
@@ -94,7 +97,7 @@ await migrate();
 eq('migration: auto on → default autoMode (unset)', store.autoMode, undefined);
 
 // Display label
-eq('label fallback', label(tv), 'Externer Bildschirm (1920×1080)');
+eq('label fallback', label(tv), 'External display (1920×1080)');
 eq('label from name', label(tv, 'Wohnzimmer'), 'Wohnzimmer (1920×1080)');
 
 console.log(failed ? `${failed} check(s) failed` : 'all checks passed');

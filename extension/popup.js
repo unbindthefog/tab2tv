@@ -3,6 +3,7 @@
 // title; state is shown in the keys' lamp lines; a problem appears in red in the lamp of the key that
 // was pressed.
 const $ = id => document.getElementById(id);
+tab2tvLocalize();
 
 // ?tabId= lets tests open the popup as a normal tab for a given page tab.
 const testTabId = +new URLSearchParams(location.search).get('tabId') || null;
@@ -125,11 +126,11 @@ $('options').addEventListener('click', () => {
 // can't be sent). Without a video it names the page's host. A sendable video also lights SEND's lamp with OK.
 // A separate probe (display only, no user activation needed); frames without the hooks (a content
 // script from before an update) fall back to the tab title for the top frame and count as copyable.
-const DOT_TIPS = { copy: 'Video wird auf den TV kopiert', move: 'Video wird ins Bild-in-Bild-Fenster auf dem TV verschoben' };
+const DOT_TIPS = { copy: 'dotCopy', move: 'dotMove' };
 
 function setStatus(kind, text) {
   $('dot').className = 'dot' + (kind ? ' ' + kind : '');
-  $('dot').title = DOT_TIPS[kind] || 'Kein sendbares Video';
+  $('dot').title = tab2tvT(DOT_TIPS[kind] || 'dotNone');
   $('title').textContent = text;
   $('title').title = text;
   $('title').className = kind ? '' : 'none';

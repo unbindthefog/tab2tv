@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html>
 <head>
 <meta charset="utf-8">
 <title>tab2tv</title>
@@ -25,10 +25,10 @@
      then draws the keyboard focus ring on SEND even after a mouse click; without it, no key has
      focus on opening, so Enter does nothing. -->
 <div class="panel">
-  <button class="key" id="closeAll" type="button" title="Alle TV-Fenster schließen">CLEAR<span class="lamp" id="clearLamp"></span></button>
-  <button class="key" id="tabToggle" type="button" title="Video dieses Tabs auf den TV / zurückholen">SEND<span class="lamp" id="sendLamp"></span></button>
-  <button class="key" id="options" type="button" title="Einstellungen">OPT<span class="lamp"></span></button>
-  <button class="key" id="auto" type="button" title="Automatik an/aus">AUTO<span class="lamp" id="autoLamp"></span></button>
+  <button class="key" id="closeAll" type="button" data-i18n-title="keyClearTip">CLEAR<span class="lamp" id="clearLamp"></span></button>
+  <button class="key" id="tabToggle" type="button" data-i18n-title="keySendTip">SEND<span class="lamp" id="sendLamp"></span></button>
+  <button class="key" id="options" type="button" data-i18n-title="keyOptTip">OPT<span class="lamp"></span></button>
+  <button class="key" id="auto" type="button" data-i18n-title="keyAutoTip">AUTO<span class="lamp" id="autoLamp"></span></button>
 </div>
 <footer class="footer"><h1>tab2tv</h1><span class="version" id="version"></span></footer>
 <!-- Branch and hash, written by .git/hooks/post-commit (gitignored, may be missing). -->

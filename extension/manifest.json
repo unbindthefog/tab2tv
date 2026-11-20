@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "tab2tv",
-  "version": "0.58",
-  "description": "Gibt das Video eines Tabs im Vollbild auf dem zweiten Bildschirm aus.",
+  "name": "__MSG_extName__",
+  "version": "0.59",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "permissions": ["system.display", "storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },

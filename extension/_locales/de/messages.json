@@ -1,0 +1,200 @@
+{
+  "extName": {
+    "message": "tab2tv"
+  },
+  "extDescription": {
+    "message": "Gibt das Video eines Tabs im Vollbild auf dem zweiten Bildschirm aus."
+  },
+  "keyClearTip": {
+    "message": "Alle TV-Fenster schließen"
+  },
+  "keySendTip": {
+    "message": "Video dieses Tabs auf den TV / zurückholen"
+  },
+  "keyOptTip": {
+    "message": "Einstellungen"
+  },
+  "keyAutoTip": {
+    "message": "Automatik an/aus"
+  },
+  "dotCopy": {
+    "message": "Video wird auf den TV kopiert"
+  },
+  "dotMove": {
+    "message": "Video wird ins Bild-in-Bild-Fenster auf dem TV verschoben"
+  },
+  "dotNone": {
+    "message": "Kein sendbares Video"
+  },
+  "badgeOff": {
+    "message": "AUS"
+  },
+  "actionAutoOn": {
+    "message": "tab2tv: Automatik an"
+  },
+  "actionAutoOff": {
+    "message": "tab2tv: Automatik aus"
+  },
+  "actionNoTarget": {
+    "message": "tab2tv: kein Zielbildschirm"
+  },
+  "optionsTitle": {
+    "message": "tab2tv – Einstellungen"
+  },
+  "optTarget": {
+    "message": "Zielbildschirm"
+  },
+  "optAuto": {
+    "message": "Automatik"
+  },
+  "optAutoSites": {
+    "message": "Videos auf diesen Websites beim Start automatisch auf den TV ausgeben (eine pro Zeile, gilt auch für Subdomains):"
+  },
+  "optAutoAll": {
+    "message": "Auf allen Websites automatisch ausgeben"
+  },
+  "optLook": {
+    "message": "Darstellung"
+  },
+  "optParallel": {
+    "message": "Paralleldarstellung: Video läuft im Player der Seite weiter"
+  },
+  "optOnEnded": {
+    "message": "Bei Videoende:"
+  },
+  "optEndedStay": {
+    "message": "auf dem TV stehen lassen"
+  },
+  "optEndedReturn": {
+    "message": "zurückholen"
+  },
+  "optEndedBlack": {
+    "message": "TV schwarz"
+  },
+  "optCornersHint": {
+    "message": "Für ein randloses Bild auf dem TV in Brave ausschalten:"
+  },
+  "optCornersLink": {
+    "message": "„Abgerundete Ecken in Hauptelementen anzeigen“"
+  },
+  "optAdvanced": {
+    "message": "Erweitert"
+  },
+  "optThresholds": {
+    "message": "Automatik: Schwellwerte"
+  },
+  "optMinDuration": {
+    "message": "Mindestdauer"
+  },
+  "optSeconds": {
+    "message": "Sekunden"
+  },
+  "optMinWidth": {
+    "message": "Mindestbreite im Player"
+  },
+  "optTabs": {
+    "message": "Mehrere Tabs"
+  },
+  "optBackgroundClose": {
+    "message": "Ein TV-Fenster im Hintergrund (anderer Tab hat den TV übernommen) schließen nach"
+  },
+  "optDisplays": {
+    "message": "Bildschirme"
+  },
+  "optShowNames": {
+    "message": "Bildschirmnamen anzeigen"
+  },
+  "optShowNamesHint": {
+    "message": "Fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ statt „Externer Bildschirm“ erscheinen."
+  },
+  "optDiagnosis": {
+    "message": "Diagnose: letzte Bildschirm-Änderungen"
+  },
+  "optSave": {
+    "message": "Speichern"
+  },
+  "optSaved": {
+    "message": "Gespeichert"
+  },
+  "optNamesUnavailable": {
+    "message": "Bildschirmnamen nicht verfügbar: $VALUE$",
+    "placeholders": {
+      "value": {
+        "content": "$1"
+      }
+    }
+  },
+  "optTargetAuto": {
+    "message": "Automatisch: erster zusätzlicher Bildschirm"
+  },
+  "optTargetChosen": {
+    "message": "Gewählter Bildschirm"
+  },
+  "optNotConnected": {
+    "message": "$VALUE$ – nicht verbunden",
+    "placeholders": {
+      "value": {
+        "content": "$1"
+      }
+    }
+  },
+  "optOutputOn": {
+    "message": "Ausgabe aktuell auf: $VALUE$",
+    "placeholders": {
+      "value": {
+        "content": "$1"
+      }
+    }
+  },
+  "optNoTarget": {
+    "message": "Kein Zielbildschirm verbunden."
+  },
+  "optLogEmpty": {
+    "message": "(noch keine Einträge)"
+  },
+  "logPrimary": {
+    "message": "primär"
+  },
+  "logInternal": {
+    "message": "intern"
+  },
+  "displayInternal": {
+    "message": "Eingebauter Bildschirm"
+  },
+  "displayExternal": {
+    "message": "Externer Bildschirm"
+  },
+  "toastPlayOnTv": {
+    "message": "Video auf dem TV abspielen?"
+  },
+  "toastPlayButton": {
+    "message": "Auf TV abspielen"
+  },
+  "toastPopupBlocked": {
+    "message": "Popup wurde blockiert."
+  },
+  "toastNoDisplay": {
+    "message": "Kein zweiter Bildschirm verbunden."
+  },
+  "toastFailed": {
+    "message": "Ausgabe auf den TV fehlgeschlagen."
+  },
+  "toastToolbar": {
+    "message": "Auf dem TV ist oben noch eine Leiste sichtbar. Abhilfe in Brave: Menü „Ansicht“ → „Symbolleiste im Vollbildmodus immer anzeigen“ ausschalten (⇧⌘F)."
+  },
+  "toastDrm": {
+    "message": "Dieses Video ist kopiergeschützt (DRM) und kann nicht auf den TV ausgegeben werden."
+  },
+  "toastOrigin": {
+    "message": "Dieses Video kann nicht auf den TV ausgegeben werden (fremde Herkunft)."
+  },
+  "toastNo": {
+    "message": "Nein"
+  },
+  "toastOk": {
+    "message": "OK"
+  },
+  "playingOnTv": {
+    "message": "Wird auf TV wiedergegeben"
+  }
+}

@@ -106,7 +106,7 @@
       startTv(v);
     } else {
       log('no user activation (at play:', activeAtPlay, ') – offering button');
-      toast('Video auf dem TV abspielen?', [{ label: 'Auf TV abspielen', action: () => startTv(v) }], 10000);
+      toast(tab2tvT('toastPlayOnTv'), [{ label: tab2tvT('toastPlayButton'), action: () => startTv(v) }], 10000);
     }
   }, true);
 
@@ -128,8 +128,8 @@
 
   function explain(reason) {
     toast(reason === 'drm'
-      ? 'Dieses Video ist kopiergeschützt (DRM) und kann nicht auf den TV ausgegeben werden.'
-      : 'Dieses Video kann nicht auf den TV ausgegeben werden (fremde Herkunft).');
+      ? tab2tvT('toastDrm')
+      : tab2tvT('toastOrigin'));
   }
 
   function captureOrExplain(v) {
@@ -143,7 +143,7 @@
     // Without user activation Brave opens window.open(..., 'popup') as a plain tab instead of a
     // popup window, so ask for a click first (the click itself provides the activation).
     if (!navigator.userActivation.isActive) {
-      toast('Video auf dem TV abspielen?', [{ label: 'Auf TV abspielen', action: () => startTv(video) }], 10000);
+      toast(tab2tvT('toastPlayOnTv'), [{ label: tab2tvT('toastPlayButton'), action: () => startTv(video) }], 10000);
       return;
     }
     const { stream, reason } = capture(video);
@@ -160,7 +160,7 @@
     // A normal tab (no 'popup' feature): the service worker moves it into the TV window.
     const popup = window.open(TAB2TV_POPUP_URL, 'tab2tv_' + Date.now());
     if (!popup) {
-      toast('Popup wurde blockiert.', [{ label: 'Auf TV abspielen', action: () => startTv(video) }], 10000);
+      toast(tab2tvT('toastPopupBlocked'), [{ label: tab2tvT('toastPlayButton'), action: () => startTv(video) }], 10000);
       return;
     }
 
@@ -187,7 +187,7 @@
     log('placed in', Math.round(performance.now() - t0), 'ms', res);
     if (!res?.ok) {
       stopTv({ reason: 'place failed' });
-      toast(res?.reason === 'noDisplay' ? 'Kein zweiter Bildschirm verbunden.' : 'Ausgabe auf den TV fehlgeschlagen.');
+      toast(res?.reason === 'noDisplay' ? tab2tvT('toastNoDisplay') : tab2tvT('toastFailed'));
       return;
     }
     // YouTube picks its quality from the small in-page player: raise it up to the TV's resolution
@@ -204,7 +204,7 @@
     setTimeout(() => {
       if (session?.popup === popup && !toolbarWarned && popup.innerHeight < res.display.height - 4) {
         toolbarWarned = true;
-        toast('Auf dem TV ist oben noch eine Leiste sichtbar. Abhilfe in Brave: Menü „Ansicht“ → „Symbolleiste im Vollbildmodus immer anzeigen“ ausschalten (⇧⌘F).', [], 15000);
+        toast(tab2tvT('toastToolbar'), [], 15000);
       }
     }, 2000);
   }
@@ -220,12 +220,12 @@
     try {
       // Before the window opens: without a TV the video would jump into it and right back.
       const status = await chrome.runtime.sendMessage({ type: 'status' }).catch(() => null);
-      if (!status) { toast('Ausgabe auf den TV fehlgeschlagen.'); return; }
-      if (!status.hasTarget) { toast('Kein zweiter Bildschirm verbunden.'); return; }
+      if (!status) { toast(tab2tvT('toastFailed')); return; }
+      if (!status.hasTarget) { toast(tab2tvT('toastNoDisplay')); return; }
       pip = await documentPictureInPicture.requestWindow({ width: 960, height: 540 });
       if (session || !video.isConnected) {
         pip.close();
-        if (!session) toast('Ausgabe auf den TV fehlgeschlagen.');
+        if (!session) toast(tab2tvT('toastFailed'));
         return;
       }
       const d = pip.document;
@@ -245,7 +245,7 @@
       const cs = getComputedStyle(video);
       standIn = document.createElement('div');
       standIn.className = 'tab2tv-standin';
-      standIn.textContent = 'Wird auf TV wiedergegeben';
+      standIn.textContent = tab2tvT('playingOnTv');
       for (const k of ['position', 'top', 'left', 'right', 'bottom', 'width', 'height']) standIn.style[k] = cs[k];
       const place = { parent: video.parentNode, next: video.nextSibling };
       // A video filling its player keeps following its size (window resized, theater mode). Only a
@@ -285,7 +285,7 @@
       if (session?.popup !== pip) return;
       if (!res?.ok) {
         stopTv({ reason: 'place failed' });
-        toast(res?.reason === 'noDisplay' ? 'Kein zweiter Bildschirm verbunden.' : 'Ausgabe auf den TV fehlgeschlagen.');
+        toast(res?.reason === 'noDisplay' ? tab2tvT('toastNoDisplay') : tab2tvT('toastFailed'));
       }
     } catch (e) {
       log('picture-in-picture failed', e);
@@ -299,8 +299,8 @@
       } finally {
         // The window was refused for lack of a fresh click (e.g. the automatic start took too long).
         if (!pip && e?.name === 'NotAllowedError') {
-          toast('Video auf dem TV abspielen?', [{ label: 'Auf TV abspielen', action: () => startTv(video) }], 10000);
-        } else toast('Ausgabe auf den TV fehlgeschlagen.');
+          toast(tab2tvT('toastPlayOnTv'), [{ label: tab2tvT('toastPlayButton'), action: () => startTv(video) }], 10000);
+        } else toast(tab2tvT('toastFailed'));
       }
     } finally {
       starting = false;
@@ -494,7 +494,7 @@
     v.setAttribute('data-tab2tv-hidden', '');
     const ph = document.createElement('div');
     ph.className = 'tab2tv-placeholder';
-    ph.textContent = 'Wird auf TV wiedergegeben';
+    ph.textContent = tab2tvT('playingOnTv');
     v.after(ph);
     // Keep the placeholder exactly over the video without touching page layout.
     const sync = () => {
@@ -604,7 +604,7 @@
       el.addEventListener('click', () => { close(); b.action(); });
       row.append(el);
     }
-    const x = document.createElement('button'); x.className = 's'; x.textContent = buttons.length ? 'Nein' : 'OK';
+    const x = document.createElement('button'); x.className = 's'; x.textContent = tab2tvT(buttons.length ? 'toastNo' : 'toastOk');
     x.addEventListener('click', close);
     row.append(x);
     box.append(p, row);

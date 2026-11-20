@@ -1,37 +1,39 @@
 # tab2tv
 
-Brave-Erweiterung, die das Video eines Browser-Tabs im Vollbild auf einem zweiten Bildschirm ausgibt (z. B. TV per AirPlay). Die Seite bleibt auf dem Hauptbildschirm bedienbar, ihr Player steuert das Bild auf dem TV.
+**English** · [Deutsch](README.de.md)
+
+Brave extension that plays the video of a browser tab full screen on a second display (e.g. a TV via AirPlay). The page stays usable on the main display, and its player controls the picture on the TV.
 
 ## Installation
 
-`brave://extensions` → **Entwicklermodus** an → **Entpackte Erweiterung laden** → Ordner `extension/`. Nach Codeänderungen auf der Erweiterungskarte ↻ klicken.
+`brave://extensions` → turn on **Developer mode** → **Load unpacked** → folder `extension/`. After code changes, click ↻ on the extension's card.
 
-## Einstellungen
+## Settings
 
-- **macOS:** TV per AirPlay als **separaten Bildschirm** verbinden, nicht synchronisieren. „Monitore verwenden verschiedene Spaces“ eingeschaltet lassen.
-- **Brave:** Ansicht → „Symbolleiste im Vollbildmodus immer anzeigen“ aus (⇧⌘F). Einstellungen → Darstellung → „Abgerundete Ecken in Hauptelementen anzeigen“ aus.
+- **macOS:** connect the TV via AirPlay as a **separate display**, not mirrored. Leave “Displays have separate Spaces” turned on.
+- **Brave:** View → turn off “Always show toolbar in full screen” (⇧⌘F). Settings → Appearance → turn off “Show rounded corners on main elements”.
 
-## Bedienung
+## Usage
 
-Menü am Erweiterungssymbol:
+Menu on the extension icon (texts in English or German, following the browser's language setting):
 
-- **SEND:** schickt das Video dieses Tabs auf den TV, erneut drücken holt es zurück. Ohne Video öffnet SEND das TV-Fenster mit dem Platzhalter.
-- **CLEAR:** beendet alle Ausgaben, erneut drücken schließt das TV-Fenster.
-- **AUTO:** Automatik, standardmäßig aus. Wenn sie an ist, geht auf freigegebenen Websites (Standard: youtube.com) ein gestartetes Video von selbst auf den TV, und der TV folgt dem aktiven Tab.
-- **OPT:** Einstellungen, etwa Zielbildschirm, Websites der Automatik, Paralleldarstellung und Wartezeiten.
+- **SEND:** sends this tab's video to the TV; press again to bring it back. Without a video, SEND opens the TV window with its placeholder.
+- **CLEAR:** ends all output; press again to close the TV window.
+- **AUTO:** automatic mode, off by default. When it is on, a video started on allowed websites (default: youtube.com) goes to the TV by itself, and the TV follows the active tab.
+- **OPT:** settings, such as the target display, the websites for automatic mode, parallel display and waiting times.
 
-Wird der TV getrennt, kehrt das Video pausiert in die Seite zurück.
+If the TV is disconnected, the video returns to the page, paused.
 
-Videos, die sich nicht kopieren lassen (von fremden Servern ohne CORS, vermutlich auch mit Kopierschutz/DRM), schiebt tab2tv selbst in ein Bild-in-Bild-Fenster im Vollbild auf dem TV. Das Bild in der Seite bleibt so lange leer, ihr Player steuert weiter. Wechselt die Automatik zum Video eines anderen Tabs, kehrt es in seine Seite zurück.
+Videos that can't be copied (from other servers without CORS, presumably also copy-protected/DRM ones) are moved by tab2tv itself into a picture-in-picture window shown full screen on the TV. The picture in the page stays empty meanwhile; its player keeps control. If automatic mode switches to another tab's video, it returns to its page.
 
-## Grenzen
+## Limits
 
-Im Bild-in-Bild-Fenster bleibt oben auf dem TV eine schmale Titelleiste des Browsers sichtbar. In eingebetteten Playern (iframes) gibt es dieses Fenster nicht, solche Videos lassen sich dann nicht ausgeben.
+In the picture-in-picture window, a narrow browser title bar stays visible at the top of the TV. Embedded players (iframes) don't get this window, so such videos can't be sent.
 
-## Entwicklung
+## Development
 
-`extension/` ist die Erweiterung (Manifest V3, kein Build-Schritt); die gemeinsame Gestaltung von Popup, Einstellungen und TV-Platzhalter (Farben, Tasten, Lampen, Schrift) steht in `extension/style.css`. In `tools/` liegen eine isolierte Brave-Testinstanz (`test-brave.sh`), CDP-Helfer und Tests: `test-unit.mjs` läuft ohne TV, `test-multitab.mjs` und `test-automode.mjs` brauchen den TV. Die Ergebnisse der technischen Erkundung stehen in `docs/erkundung.md`.
+`extension/` is the extension (Manifest V3, no build step); the shared look of popup, settings and TV placeholder (colors, keys, lamps, font) is in `extension/style.css`. Texts are in `extension/_locales/` (`en`, `de`). `tools/` holds an isolated Brave test instance (`test-brave.sh`), CDP helpers and tests: `test-unit.mjs` runs without a TV, `test-multitab.mjs` and `test-automode.mjs` need the TV. The results of the technical exploration are in `docs/erkundung.md` (German).
 
-## Lizenz
+## License
 
-MIT, siehe `LICENSE`. Ausgenommen ist die Schrift Tiny5 in `extension/fonts/tiny5/`, sie steht unter der SIL Open Font License 1.1.
+MIT, see `LICENSE`. Excepted is the font Tiny5 in `extension/fonts/tiny5/`, which is under the SIL Open Font License 1.1.

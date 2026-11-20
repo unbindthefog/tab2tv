@@ -2,6 +2,18 @@
 // but makes leftover popups recognizable, e.g. after Brave restored them on restart.
 const TAB2TV_POPUP_URL = 'about:blank#tab2tv';
 
+// Translated text from _locales (the browser picks the language). `subs`: value for $VALUE$.
+function tab2tvT(key, subs) {
+  return chrome.i18n.getMessage(key, subs);
+}
+
+// Fills elements marked data-i18n (text) and data-i18n-title (tooltip) on extension pages.
+function tab2tvLocalize(root = document) {
+  document.documentElement.lang = chrome.i18n.getUILanguage();
+  for (const el of root.querySelectorAll('[data-i18n]')) el.textContent = tab2tvT(el.dataset.i18n);
+  for (const el of root.querySelectorAll('[data-i18n-title]')) el.title = tab2tvT(el.dataset.i18nTitle);
+}
+
 // Shared settings defaults, used by content script, background and options page.
 const TAB2TV_DEFAULTS = {
   autoMode: false,          // master switch (toolbar icon): automatic start + TV follows active tab
@@ -45,7 +57,7 @@ function tab2tvPickTarget(displays, target) {
 }
 
 function tab2tvDisplayLabel(d, label) {
-  const name = label || d.name || (d.isInternal ? 'Eingebauter Bildschirm' : 'Externer Bildschirm');
+  const name = label || d.name || tab2tvT(d.isInternal ? 'displayInternal' : 'displayExternal');
   return `${name} (${d.bounds.width}×${d.bounds.height})`;
 }
 

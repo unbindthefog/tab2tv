@@ -150,7 +150,7 @@ function setStateIcon(color) {
     .catch(() => {});
 }
 
-// Badge: "–" no target display, "AUS" automatic mode off; tabs with a TV window show "TV"
+// Badge: "–" no target display, "AUS"/"OFF" automatic mode off; tabs with a TV window show "TV"
 // (green with automatic mode on, red with it off).
 // Runs serialized: overlapping runs (sessions change several times per TV handover) could
 // otherwise finish out of order and leave an outdated per-tab badge.
@@ -164,12 +164,11 @@ async function refreshBadgeNow() {
   const target = await findTargetDisplay();
   const auto = await isAutoMode();
   const grey = '#757575', green = '#2e7d32', red = '#c62828';
-  const toggleHint = auto ? 'Automatik an' : 'Automatik aus';
   await setStateIcon(!target ? grey : auto ? green : red);
   const globalColor = !target ? grey : auto ? green : red;
   await chrome.action.setBadgeBackgroundColor({ color: globalColor });
-  await chrome.action.setBadgeText({ text: !target ? '–' : auto ? '' : 'AUS' });
-  const globalTitle = 'tab2tv: ' + (target ? toggleHint : 'kein Zielbildschirm');
+  await chrome.action.setBadgeText({ text: !target ? '–' : auto ? '' : tab2tvT('badgeOff') });
+  const globalTitle = tab2tvT(!target ? 'actionNoTarget' : auto ? 'actionAutoOn' : 'actionAutoOff');
   await chrome.action.setTitle({ title: globalTitle });
   // Per tab only the text "TV" (color and tooltip stay global, so nothing per tab can go stale).
   // Sessions end in several places (evicted, released, closed), so diff against the last run

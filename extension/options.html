@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="de">
+<html>
 <head>
 <meta charset="utf-8">
-<title>tab2tv – Einstellungen</title>
+<title>tab2tv</title>
 <link rel="stylesheet" href="style.css">
 <style>
   /* Palette and the settings blocks (fieldset, hint, advanced): style.css, shared with the popup. */
@@ -17,48 +17,48 @@
 <body class="settings">
 <h1>tab2tv</h1>
 <fieldset>
-  <legend>Zielbildschirm</legend>
+  <legend data-i18n="optTarget"></legend>
   <label>
     <select id="targetDisplay"></select>
   </label>
   <div id="displayStatus" class="hint"></div>
 </fieldset>
 <fieldset>
-  <legend>Automatik</legend>
-  <label>Videos auf diesen Websites beim Start automatisch auf den TV ausgeben (eine pro Zeile, gilt auch für Subdomains):
+  <legend data-i18n="optAuto"></legend>
+  <label><span data-i18n="optAutoSites"></span>
     <textarea id="autoSites"></textarea></label>
-  <label><input type="checkbox" id="autoAllSites"> Auf allen Websites automatisch ausgeben</label>
+  <label><input type="checkbox" id="autoAllSites"> <span data-i18n="optAutoAll"></span></label>
 </fieldset>
 <fieldset>
-  <legend>Darstellung</legend>
-  <label><input type="checkbox" id="parallel"> Paralleldarstellung: Video läuft im Player der Seite weiter</label>
-  <label>Bei Videoende:
+  <legend data-i18n="optLook"></legend>
+  <label><input type="checkbox" id="parallel"> <span data-i18n="optParallel"></span></label>
+  <label><span data-i18n="optOnEnded"></span>
     <select id="onEnded">
-      <option value="stay">auf dem TV stehen lassen</option>
-      <option value="return">zurückholen</option>
-      <option value="black">TV schwarz</option>
+      <option value="stay" data-i18n="optEndedStay"></option>
+      <option value="return" data-i18n="optEndedReturn"></option>
+      <option value="black" data-i18n="optEndedBlack"></option>
     </select>
   </label>
-  <div class="hint">Für ein randloses Bild auf dem TV in Brave ausschalten:
-    <a href="#" id="braveCorners">„Abgerundete Ecken in Hauptelementen anzeigen“</a>.</div>
+  <div class="hint"><span data-i18n="optCornersHint"></span>
+    <a href="#" id="braveCorners" data-i18n="optCornersLink"></a>.</div>
 </fieldset>
 <details class="advanced">
-  <summary>Erweitert</summary>
-  <h3>Automatik: Schwellwerte</h3>
-  <label>Mindestdauer <input type="number" id="minDurationSec" min="0"> Sekunden</label>
-  <label>Mindestbreite im Player <input type="number" id="minWidthPx" min="0"> px</label>
-  <h3>Mehrere Tabs</h3>
-  <label>Ein TV-Fenster im Hintergrund (anderer Tab hat den TV übernommen) schließen nach
-    <input type="number" id="backgroundCloseSec" min="5"> Sekunden</label>
-  <h3>Bildschirme</h3>
-  <button id="showNames" type="button">Bildschirmnamen anzeigen</button>
-  <div class="hint">Fragt einmalig die Berechtigung zur Fensterverwaltung an, damit Namen wie „Wohnzimmer“ statt „Externer Bildschirm“ erscheinen.</div>
+  <summary data-i18n="optAdvanced"></summary>
+  <h3 data-i18n="optThresholds"></h3>
+  <label><span data-i18n="optMinDuration"></span> <input type="number" id="minDurationSec" min="0"> <span data-i18n="optSeconds"></span></label>
+  <label><span data-i18n="optMinWidth"></span> <input type="number" id="minWidthPx" min="0"> px</label>
+  <h3 data-i18n="optTabs"></h3>
+  <label><span data-i18n="optBackgroundClose"></span>
+    <input type="number" id="backgroundCloseSec" min="5"> <span data-i18n="optSeconds"></span></label>
+  <h3 data-i18n="optDisplays"></h3>
+  <button id="showNames" type="button" data-i18n="optShowNames"></button>
+  <div class="hint" data-i18n="optShowNamesHint"></div>
   <details>
-    <summary>Diagnose: letzte Bildschirm-Änderungen</summary>
+    <summary data-i18n="optDiagnosis"></summary>
     <pre id="displayLog"></pre>
   </details>
 </details>
-<button id="save">Speichern</button><span id="saved"></span>
+<button id="save" data-i18n="optSave"></button><span id="saved"></span>
 <script src="settings.js"></script>
 <script src="options.js"></script>
 </body>

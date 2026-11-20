@@ -63,7 +63,7 @@ check('A on TV (automatic mode on)', s.owner === id.A && (await tvWindows()) ===
 
 await clickIcon(id.A);
 check('icon: automatic mode off', (await options('chrome.storage.local.get("autoMode")')).autoMode === false);
-check('badge shows AUS', (await options('chrome.action.getBadgeText({})')) === 'AUS');
+check('badge shows OFF text', (await options('chrome.action.getBadgeText({})')) === await options("chrome.i18n.getMessage('badgeOff')"));
 
 await options(`chrome.tabs.update(${id.B},{active:true})`);
 await play('B');

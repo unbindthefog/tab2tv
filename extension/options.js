@@ -1,4 +1,6 @@
 const $ = id => document.getElementById(id);
+tab2tvLocalize();
+document.title = tab2tvT('optionsTitle');
 
 let displays = [];
 let labels = {};        // display id -> label from the Window Management API (optional)
@@ -18,34 +20,34 @@ async function loadLabels(request) {
       if (d && s.label) labels[d.id] = s.label;
     }
   } catch (e) {
-    $('displayStatus').textContent = 'Bildschirmnamen nicht verfügbar: ' + e.message;
+    $('displayStatus').textContent = tab2tvT('optNamesUnavailable', e.message);
   }
 }
 
 async function renderDisplays() {
   displays = await chrome.system.display.getInfo();
   const sel = $('targetDisplay');
-  const opts = [new Option('Automatisch: erster zusätzlicher Bildschirm', '')];
+  const opts = [new Option(tab2tvT('optTargetAuto'), '')];
   for (const d of displays.filter(d => !d.isPrimary)) {
     opts.push(new Option(tab2tvDisplayLabel(d, labels[d.id]), d.id));
   }
   const match = savedTarget && tab2tvPickTarget(displays, savedTarget);
   if (savedTarget && !match) {
-    opts.push(new Option(`${savedTarget.label || 'Gewählter Bildschirm'} (${savedTarget.width}×${savedTarget.height}) – nicht verbunden`, 'saved'));
+    opts.push(new Option(tab2tvT('optNotConnected', `${savedTarget.label || tab2tvT('optTargetChosen')} (${savedTarget.width}×${savedTarget.height})`), 'saved'));
   }
   sel.replaceChildren(...opts);
   sel.value = !savedTarget ? '' : match ? match.id : 'saved';
 
   const current = tab2tvPickTarget(displays, savedTarget);
   $('displayStatus').textContent = current
-    ? 'Ausgabe aktuell auf: ' + tab2tvDisplayLabel(current, labels[current.id])
-    : 'Kein Zielbildschirm verbunden.';
+    ? tab2tvT('optOutputOn', tab2tvDisplayLabel(current, labels[current.id]))
+    : tab2tvT('optNoTarget');
 
   const { displayLog = [] } = await chrome.storage.local.get('displayLog');
   $('displayLog').textContent = displayLog.slice().reverse().map(e =>
-    new Date(e.t).toLocaleTimeString('de-DE') + ' ' + e.event + ': ' +
-    e.displays.map(d => `#${d.id} ${d.w}×${d.h}${d.primary ? ' primär' : ''}${d.internal ? ' intern' : ''}${d.name ? ' „' + d.name + '“' : ''}`).join(', ')
-  ).join('\n') || '(noch keine Einträge)';
+    new Date(e.t).toLocaleTimeString() + ' ' + e.event + ': ' +
+    e.displays.map(d => `#${d.id} ${d.w}×${d.h}${d.primary ? ' ' + tab2tvT('logPrimary') : ''}${d.internal ? ' ' + tab2tvT('logInternal') : ''}${d.name ? ` "${d.name}"` : ''}`).join(', ')
+  ).join('\n') || tab2tvT('optLogEmpty');
 }
 
 function selectedTarget() {
@@ -109,6 +111,6 @@ $('save').addEventListener('click', async () => {
     targetDisplay: savedTarget,
   });
   renderDisplays();
-  $('saved').textContent = 'Gespeichert';
+  $('saved').textContent = tab2tvT('optSaved');
   setTimeout(() => { $('saved').textContent = ''; }, 1500);
 });
